@@ -45,13 +45,15 @@ function formatTimeForDisplay(timeSlot, lang = 'sk') {
 async function getAllowedTimes(serviceId = 130113, workerId = 31576, date) {
   try {
     const dateOnly = date.split(' ')[0];
+    // Add time component as Bookio API expects it
+    const dateWithTime = `${dateOnly} 10:00`;
     const payload = {
       serviceId: parseInt(serviceId),
       workerId: parseInt(workerId),
       addons: [],
       count: 1,
       participantsCount: 0,
-      date: formatDateForAPI(dateOnly),
+      date: dateWithTime,
       lang: 'en'
     };
 
@@ -77,7 +79,9 @@ async function getSoonestAvailable(serviceId = 130113, workerId = 31576, daysToC
         year: 'numeric'
       });
       
-      const times = await getAllowedTimes(serviceId, workerId, dateStr);
+      // Add time component for API call
+      const dateWithTime = `${dateStr} 10:00`;
+      const times = await getAllowedTimes(serviceId, workerId, dateWithTime);
       
       if (times && times.all && times.all.length > 0) {
         const firstSlot = times.all[0];

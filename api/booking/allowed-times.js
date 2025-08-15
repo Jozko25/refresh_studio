@@ -40,13 +40,15 @@ export default async function handler(req, res) {
     }
 
     const dateOnly = date.split(' ')[0];
+    // Add time component as Bookio API expects it  
+    const dateWithTime = `${dateOnly} 10:00`;
     const payload = {
       serviceId: parseInt(serviceId),
       workerId: parseInt(workerId),
       addons: [],
       count: 1,
       participantsCount: 0,
-      date: formatDateForAPI(dateOnly),
+      date: dateWithTime,
       lang: 'en'
     };
 
