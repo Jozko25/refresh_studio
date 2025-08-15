@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookio Webhook API</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 2rem auto; 
+            padding: 2rem;
+            background: #f5f5f5;
+        }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .endpoint { 
+            background: #f8f9fa; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            margin: 1rem 0;
+            border-left: 4px solid #007bff;
+        }
+        .method { 
+            background: #28a745; 
+            color: white; 
+            padding: 0.2rem 0.5rem; 
+            border-radius: 3px; 
+            font-size: 0.8rem;
+        }
+        code { 
+            background: #e9ecef; 
+            padding: 0.2rem 0.4rem; 
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Bookio Webhook API</h1>
+        <p>API for Bookio booking system integration with ElevenLabs voice AI.</p>
+        
+        <h2>📋 Available Endpoints</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">GET</span> Health Check</h3>
+            <code>/api/health</code>
+            <p>Check API status and configuration</p>
+        </div>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span> ElevenLabs Unified Webhook</h3>
+            <code>/api/booking/webhook/elevenlabs-unified</code>
+            <p>Main webhook for voice AI interactions (Slovak responses)</p>
+            <strong>Actions:</strong> get_available_times, get_soonest_available, book_appointment, cancel_appointment
+        </div>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span> Available Times</h3>
+            <code>/api/booking/allowed-times</code>
+            <p>Get available appointment times for a specific date</p>
+        </div>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span> Services</h3>
+            <code>/api/booking/services</code>
+            <p>Get available booking services</p>
+        </div>
+        
+        <h2>🎯 Quick Test</h2>
+        <p>Test the health endpoint: <a href="/api/health" target="_blank">/api/health</a></p>
+        
+        <h2>📚 Documentation</h2>
+        <p>For full API documentation and usage examples, see the repository files.</p>
+        
+        <hr>
+        <p><small>Powered by Bookio API • Built for AI Recepcia</small></p>
+    </div>
+</body>
+</html>

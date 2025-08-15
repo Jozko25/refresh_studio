@@ -10,5 +10,7 @@
       "source": "/health",
       "destination": "/api/health"
     }
-  ]
+  ],
+  "buildCommand": "echo 'Static build complete'",
+  "outputDirectory": "public"
 }
