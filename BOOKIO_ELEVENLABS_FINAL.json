@@ -1,0 +1,83 @@
+{
+  "name": "bookio_assistant",
+  "description": "Booking assistant for AI Recepcia - handles availability checks, booking, and cancellation through Bookio API. The LLM should extract booking information from customer conversations and format it according to the specified action type.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "type": "webhook",
+  "api_schema": {
+    "url": "http://localhost:3000/api/booking/webhook/elevenlabs-unified",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Booking operation parameters",
+      "properties": [
+        {
+          "id": "action",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "The booking action to perform in correct sequence: FIRST use \"get_available_times\" (specific date) or \"get_soonest_available\" (earliest available) to check availability, THEN after showing options to customer use \"book_appointment\" to confirm reservation. Use \"cancel_appointment\" for cancellations. NEVER start with book_appointment.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "The requested appointment date in DD.MM.YYYY format (e.g., 18.08.2025). Extract from customer's preferred date or use the date found by get_soonest_available action. Required for get_available_times and book_appointment actions.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "The specific appointment time in HH:MM format (24-hour, e.g., 14:30). Extract from customer preference or available slot selection. Required only for book_appointment action.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "customer",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Complete customer information as JSON string for booking. Format: {\"firstName\":\"Ján\",\"lastName\":\"Novák\",\"email\":\"jan@example.com\",\"phone\":\"+421910223761\"}. Collect all 4 required fields before booking. If email is difficult via voice, use phone@ai-recepcia.sk format. Required only for book_appointment action.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Phone number for cancellation lookup in format +421XXXXXXXXX. Extract from customer or use system caller ID. Required for cancel_appointment action to find existing reservations.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "appointment_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Appointment date for cancellation in DD.MM.YYYY format. Helps identify specific appointment to cancel when customer has multiple bookings. Optional for cancel_appointment action.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
