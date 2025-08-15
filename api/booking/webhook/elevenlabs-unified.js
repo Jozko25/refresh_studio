@@ -77,7 +77,7 @@ async function getSoonestAvailable(serviceId = 130113, workerId = 31576, daysToC
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
-      });
+      }).replace(/\s/g, ''); // Remove spaces from Slovak locale
       
       // Add time component for API call
       const dateWithTime = `${dateStr} 00:00`;
