@@ -31,6 +31,161 @@ function formatDateForSlovakTTS(date) {
   return `${dayNum}. ${months[monthNum]} ${yearNum}`;
 }
 
+// NEW: Enhanced date validation and parsing
+function parseAndValidateDate(dateInput) {
+  const today = new Date();
+  let targetDate;
+  
+  if (dateInput.includes('.')) {
+    // DD.MM.YYYY format
+    const [day, month, year] = dateInput.split('.');
+    targetDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  } else {
+    // Handle natural language
+    const lowerInput = dateInput.toLowerCase();
+    
+    if (lowerInput.includes('dnes') || lowerInput.includes('today')) {
+      targetDate = new Date();
+    } else if (lowerInput.includes('zajtra') || lowerInput.includes('tomorrow')) {
+      targetDate = new Date();
+      targetDate.setDate(today.getDate() + 1);
+    } else if (lowerInput.includes('budúci týždeň') || lowerInput.includes('next week')) {
+      targetDate = new Date();
+      targetDate.setDate(today.getDate() + 7);
+    } else if (lowerInput.includes('pondelok') || lowerInput.includes('monday')) {
+      targetDate = getNextWeekday(today, 1);
+    } else if (lowerInput.includes('utorok') || lowerInput.includes('tuesday')) {
+      targetDate = getNextWeekday(today, 2);
+    } else if (lowerInput.includes('streda') || lowerInput.includes('wednesday')) {
+      targetDate = getNextWeekday(today, 3);
+    } else if (lowerInput.includes('štvrtok') || lowerInput.includes('thursday')) {
+      targetDate = getNextWeekday(today, 4);
+    } else if (lowerInput.includes('piatok') || lowerInput.includes('friday')) {
+      targetDate = getNextWeekday(today, 5);
+    } else if (lowerInput.includes('sobota') || lowerInput.includes('saturday')) {
+      targetDate = getNextWeekday(today, 6);
+    } else if (lowerInput.includes('nedeľa') || lowerInput.includes('sunday')) {
+      targetDate = getNextWeekday(today, 0);
+    } else {
+      return { isValid: false, error: "Neplatný formát dátumu. Použite DD.MM.YYYY alebo 'dnes', 'zajtra', 'pondelok', atď." };
+    }
+  }
+  
+  // Validate date is not in the past
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const targetStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  
+  if (targetStart < todayStart) {
+    return { 
+      isValid: false, 
+      error: "Nemôžem rezervovať termín v minulosti. Prosím, vyberte dátum od dneška.",
+      date: null
+    };
+  }
+  
+  // Format for API
+  const formattedDate = targetDate.toLocaleDateString('sk-SK', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\s/g, '');
+  
+  return { 
+    isValid: true, 
+    date: formattedDate,
+    displayDate: formatDateForSlovakTTS(formattedDate)
+  };
+}
+
+// NEW: Helper function to get next weekday
+function getNextWeekday(date, targetDay) {
+  const today = new Date(date);
+  const currentDay = today.getDay();
+  let daysUntilTarget = targetDay - currentDay;
+  if (daysUntilTarget <= 0) daysUntilTarget += 7;
+  
+  const result = new Date(today);
+  result.setDate(today.getDate() + daysUntilTarget);
+  return result;
+}
+
+// NEW: Time filtering by period
+function filterTimesByPeriod(times, period) {
+  if (!times || !times.all) return null;
+  
+  const filtered = times.all.filter(slot => {
+    const timeStr = slot.id;
+    const hour = parseInt(timeStr.split(':')[0]);
+    
+    switch (period.toLowerCase()) {
+      case 'ráno':
+      case 'dopoludnie':
+      case 'morning':
+        return hour >= 6 && hour < 12;
+      case 'poludnie':
+      case 'noon':
+        return hour >= 11 && hour <= 13;
+      case 'popoludnie':
+      case 'afternoon':
+        return hour >= 12 && hour < 18;
+      case 'večer':
+      case 'evening':
+        return hour >= 18 && hour <= 22;
+      default:
+        return true;
+    }
+  });
+  
+  return { ...times, all: filtered };
+}
+
+// NEW: Find earlier slots
+async function findEarlierSlots(serviceId, workerId, date, requestedTime) {
+  try {
+    const times = await getAllowedTimes(serviceId, workerId, date);
+    if (!times || !times.all) return null;
+    
+    const requestedHour = parseInt(requestedTime.split(':')[0]);
+    const requestedMinute = parseInt(requestedTime.split(':')[1] || '0');
+    const requestedTotalMinutes = requestedHour * 60 + requestedMinute;
+    
+    const earlierSlots = times.all.filter(slot => {
+      const slotHour = parseInt(slot.id.split(':')[0]);
+      const slotMinute = parseInt(slot.id.split(':')[1] || '0');
+      const slotTotalMinutes = slotHour * 60 + slotMinute;
+      return slotTotalMinutes < requestedTotalMinutes;
+    });
+    
+    return earlierSlots.slice(-2); // Return last 2 earlier slots
+  } catch (error) {
+    console.error('Error finding earlier slots:', error);
+    return null;
+  }
+}
+
+// NEW: Get service information
+function getServiceInfo() {
+  return {
+    success: true,
+    services: [
+      {
+        id: 130113,
+        name: "Refresh Studio Service",
+        description: "Profesionálne wellness a relaxačné služby",
+        duration: "10 minút",
+        workerId: 31576,
+        facilities: "Moderné vybavenie v relaxačnom prostredí"
+      }
+    ],
+    facility: {
+      id: BOOKIO_FACILITY_ID,
+      name: "Refresh Studio",
+      address: "Ihrisková 4, Bratislava-Rača",
+      description: "Wellness a relaxačné centrum s profesionálnymi službami"
+    }
+  };
+}
+
 function formatTimeForDisplay(timeSlot, lang = 'sk') {
   const time = timeSlot.nameSuffix || timeSlot.name || timeSlot.id;
   if (lang === 'sk') {
@@ -61,7 +216,6 @@ function formatTimeForDisplay(timeSlot, lang = 'sk') {
 async function getAllowedTimes(serviceId = 130113, workerId = 31576, date) {
   try {
     const dateOnly = date.split(' ')[0];
-    // Add time component as Bookio API expects it
     const dateWithTime = `${dateOnly} 00:00`;
     const payload = {
       serviceId: parseInt(serviceId),
@@ -81,6 +235,30 @@ async function getAllowedTimes(serviceId = 130113, workerId = 31576, date) {
   }
 }
 
+async function getSmartSlotRecommendations(serviceId = 130113, workerId = 31576, date, startIndex = 0) {
+  try {
+    const times = await getAllowedTimes(serviceId, workerId, date);
+    if (!times || !times.all || times.all.length === 0) {
+      return null;
+    }
+    
+    const availableSlots = times.all.slice(startIndex, startIndex + 2);
+    return {
+      date: date.split(' ')[0],
+      slots: availableSlots.map(slot => ({
+        time: slot.id,
+        display: formatTimeForDisplay(slot, 'sk')
+      })),
+      totalSlots: times.all.length,
+      hasMore: times.all.length > startIndex + 2,
+      allSlots: times.all
+    };
+  } catch (error) {
+    console.error('Error getting smart recommendations:', error.message);
+    return null;
+  }
+}
+
 async function getSoonestAvailable(serviceId = 130113, workerId = 31576, daysToCheck = 30) {
   try {
     const today = new Date();
@@ -93,19 +271,18 @@ async function getSoonestAvailable(serviceId = 130113, workerId = 31576, daysToC
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
-      }).replace(/\s/g, ''); // Remove spaces from Slovak locale
+      }).replace(/\s/g, '');
       
-      // Add time component for API call
       const dateWithTime = `${dateStr} 00:00`;
-      const times = await getAllowedTimes(serviceId, workerId, dateWithTime);
+      const smartSlots = await getSmartSlotRecommendations(serviceId, workerId, dateWithTime, 0);
       
-      if (times && times.all && times.all.length > 0) {
-        const firstSlot = times.all[0];
+      if (smartSlots && smartSlots.slots.length > 0) {
         return {
           date: dateStr,
-          time: firstSlot.id,
-          display: formatTimeForDisplay(firstSlot, 'sk'),
-          slot: firstSlot
+          slots: smartSlots.slots,
+          hasMore: smartSlots.hasMore,
+          totalSlots: smartSlots.totalSlots,
+          allSlots: smartSlots.allSlots
         };
       }
     }
@@ -196,7 +373,6 @@ async function bookAppointment(serviceId = 130113, workerId = 31576, date, time,
 }
 
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -213,7 +389,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { action, date, time, customer, phone, appointment_date } = req.body;
+    const { 
+      action, 
+      date, 
+      time, 
+      customer, 
+      phone, 
+      appointment_date, 
+      previous_time,
+      time_period,
+      requested_time
+    } = req.body;
 
     switch (action) {
       case 'get_available_times':
@@ -225,34 +411,79 @@ export default async function handler(req, res) {
           });
         }
 
-        const times = await getAllowedTimes(130113, 31576, date);
-        
-        if (!times || !times.all || times.all.length === 0) {
-          const formattedDate = formatDateForSlovakTTS(date);
+        // NEW: Enhanced date validation
+        const dateValidation = parseAndValidateDate(date);
+        if (!dateValidation.isValid) {
           return res.json({
-            response: `Na dátum ${formattedDate} nie sú dostupné žiadne termíny.`,
+            response: dateValidation.error,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const isFollowUp = previous_time && previous_time !== "";
+        const startIndex = isFollowUp ? 2 : 0;
+        
+        let smartSlots = await getSmartSlotRecommendations(130113, 31576, dateValidation.date, startIndex);
+        
+        // NEW: Filter by time period if specified
+        if (time_period && smartSlots) {
+          const times = await getAllowedTimes(130113, 31576, dateValidation.date);
+          const filteredTimes = filterTimesByPeriod(times, time_period);
+          if (filteredTimes && filteredTimes.all.length > 0) {
+            smartSlots = {
+              ...smartSlots,
+              slots: filteredTimes.all.slice(startIndex, startIndex + 2).map(slot => ({
+                time: slot.id,
+                display: formatTimeForDisplay(slot, 'sk')
+              })),
+              totalSlots: filteredTimes.all.length
+            };
+          }
+        }
+        
+        if (!smartSlots || smartSlots.slots.length === 0) {
+          const noMoreMsg = isFollowUp ? 
+            `Na ${dateValidation.displayDate} už nemám ďalšie termíny.` :
+            time_period ? 
+            `Na ${dateValidation.displayDate} nie sú dostupné žiadne termíny ${time_period}.` :
+            `Na dátum ${dateValidation.displayDate} nie sú dostupné žiadne termíny.`;
+          
+          return res.json({
+            response: noMoreMsg,
             success: true,
             availableTimes: [],
             timestamp: new Date().toISOString()
           });
         }
 
-        const limitedTimes = times.all.slice(0, 3);
-        const timeDescriptions = limitedTimes.map(slot => formatTimeForDisplay(slot, 'sk'));
+        const timeDescriptions = smartSlots.slots.map(slot => slot.display);
         
-        const response = timeDescriptions.length === 1 
-          ? `Dostupný je termín o ${timeDescriptions[0]}.`
-          : timeDescriptions.length === 2
-          ? `Dostupné sú termíny o ${timeDescriptions[0]} a ${timeDescriptions[1]}.`
-          : `Dostupné sú termíny o ${timeDescriptions.slice(0, -1).join(', ')} a ${timeDescriptions[timeDescriptions.length - 1]}.`;
+        let response;
+        if (isFollowUp) {
+          if (timeDescriptions.length === 1) {
+            response = smartSlots.hasMore ? 
+              `Mám ešte o ${timeDescriptions[0]}. Vyhovuje?` :
+              `Posledný termín je o ${timeDescriptions[0]}. Vyhovuje?`;
+          } else {
+            response = smartSlots.hasMore ?
+              `Mám ešte o ${timeDescriptions[0]} alebo ${timeDescriptions[1]}. Vyhovuje niečo?` :
+              `Posledné termíny sú o ${timeDescriptions[0]} alebo ${timeDescriptions[1]}. Vyhovuje niečo?`;
+          }
+        } else {
+          response = timeDescriptions.length === 1 
+            ? `Dostupný je termín o ${timeDescriptions[0]}.`
+            : timeDescriptions.length === 2
+            ? `Dostupné sú termíny o ${timeDescriptions[0]} a ${timeDescriptions[1]}.`
+            : `Dostupné sú termíny o ${timeDescriptions.slice(0, -1).join(', ')} a ${timeDescriptions[timeDescriptions.length - 1]}.`;
+        }
 
         return res.json({
           response,
           success: true,
-          availableTimes: limitedTimes.map(slot => ({
-            time: slot.id,
-            display: formatTimeForDisplay(slot, 'sk')
-          })),
+          availableTimes: smartSlots.slots,
+          hasMore: smartSlots.hasMore,
+          isFollowUp: isFollowUp,
           timestamp: new Date().toISOString(),
           source: "elevenlabs"
         });
@@ -269,14 +500,82 @@ export default async function handler(req, res) {
         }
 
         const formattedDate = formatDateForSlovakTTS(soonest.date);
+        const timeOptions = soonest.slots.map(slot => slot.display);
+        
+        let soonestResponse;
+        if (timeOptions.length === 1) {
+          soonestResponse = `Najbližší termín je ${formattedDate} o ${timeOptions[0]}. Vyhovuje?`;
+        } else {
+          soonestResponse = `Najbližší termín je ${formattedDate} o ${timeOptions[0]} alebo ${timeOptions[1]}. Ktorý vyhovuje?`;
+        }
+
         return res.json({
-          response: `Najbližší dostupný termín je ${formattedDate} o ${soonest.display}.`,
+          response: soonestResponse,
           success: true,
           appointment: {
             date: soonest.date,
-            time: soonest.time,
-            display: soonest.display
+            availableSlots: soonest.slots,
+            hasMore: soonest.hasMore,
+            totalSlots: soonest.totalSlots
           },
+          timestamp: new Date().toISOString(),
+          source: "elevenlabs"
+        });
+
+      // NEW: Get earlier slots
+      case 'get_earlier_times':
+        if (!date || !requested_time) {
+          return res.status(400).json({
+            response: "Pre vyhľadanie skorších termínov potrebujem dátum a požadovaný čas.",
+            success: false,
+            error: "Date and requested time are required"
+          });
+        }
+
+        const earlierDateValidation = parseAndValidateDate(date);
+        if (!earlierDateValidation.isValid) {
+          return res.json({
+            response: earlierDateValidation.error,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const earlierSlots = await findEarlierSlots(130113, 31576, earlierDateValidation.date, requested_time);
+        
+        if (!earlierSlots || earlierSlots.length === 0) {
+          return res.json({
+            response: `Pred ${requested_time} na ${earlierDateValidation.displayDate} nie sú dostupné žiadne skoršie termíny.`,
+            success: true,
+            availableTimes: [],
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const earlierDescriptions = earlierSlots.map(slot => formatTimeForDisplay(slot, 'sk'));
+        const earlierResponse = earlierDescriptions.length === 1 
+          ? `Skorší termín je o ${earlierDescriptions[0]}.`
+          : `Skoršie termíny sú o ${earlierDescriptions.join(' a ')}.`;
+
+        return res.json({
+          response: earlierResponse,
+          success: true,
+          availableTimes: earlierSlots.map(slot => ({
+            time: slot.id,
+            display: formatTimeForDisplay(slot, 'sk')
+          })),
+          timestamp: new Date().toISOString(),
+          source: "elevenlabs"
+        });
+
+      // NEW: Get service information
+      case 'get_services':
+        const serviceInfo = getServiceInfo();
+        return res.json({
+          response: `Ponúkame profesionálne wellness služby v Refresh Studio na adrese ${serviceInfo.facility.address}. Služba trvá ${serviceInfo.services[0].duration} v modernom a relaxačnom prostredí.`,
+          success: true,
+          services: serviceInfo.services,
+          facility: serviceInfo.facility,
           timestamp: new Date().toISOString(),
           source: "elevenlabs"
         });
@@ -324,17 +623,16 @@ export default async function handler(req, res) {
 
       case 'cancel_appointment':
         return res.json({
-          response: `Pre zrušenie rezervácie na telefónnom čísle ${phone} použite prosím odkaz v potvrdzujúcom e-maile alebo nás kontaktujte priamo.`,
+          response: `Pre zrušenie rezervácie použite prosím odkaz v potvrdzujúcom e-maile alebo nás kontaktujte priamo. Zrušenie cez telefón nie je možné z bezpečnostných dôvodov.`,
           success: true,
           instructions: "Use email cancellation link or contact directly",
           phone: phone,
-          appointment_date: appointment_date,
           timestamp: new Date().toISOString()
         });
 
       default:
         return res.status(400).json({
-          response: "Neplatná akcia. Dostupné akcie: get_available_times, get_soonest_available, book_appointment, cancel_appointment",
+          response: "Neplatná akcia. Dostupné akcie: get_available_times, get_soonest_available, get_earlier_times, get_services, book_appointment, cancel_appointment",
           success: false,
           error: "Invalid action"
         });
