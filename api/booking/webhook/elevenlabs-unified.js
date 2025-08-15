@@ -15,6 +15,22 @@ function formatDateForAPI(date) {
   return `${day}.${month}.${year}`;
 }
 
+function formatDateForSlovakTTS(date) {
+  const [day, month, year] = date.split('.');
+  const dayNum = parseInt(day);
+  const monthNum = parseInt(month);
+  const yearNum = parseInt(year);
+  
+  // Slovak month names in genitive case (for dates)
+  const months = [
+    '', 'januára', 'februára', 'marca', 'apríla', 'mája', 'júna',
+    'júla', 'augusta', 'septembra', 'októbra', 'novembra', 'decembra'
+  ];
+  
+  // Format: "osemnásteho augusta dvetisícdvadsaťpäť"
+  return `${dayNum}. ${months[monthNum]} ${yearNum}`;
+}
+
 function formatTimeForDisplay(timeSlot, lang = 'sk') {
   const time = timeSlot.nameSuffix || timeSlot.name || timeSlot.id;
   if (lang === 'sk') {
@@ -212,8 +228,9 @@ export default async function handler(req, res) {
         const times = await getAllowedTimes(130113, 31576, date);
         
         if (!times || !times.all || times.all.length === 0) {
+          const formattedDate = formatDateForSlovakTTS(date);
           return res.json({
-            response: `Na dátum ${date} nie sú dostupné žiadne termíny.`,
+            response: `Na dátum ${formattedDate} nie sú dostupné žiadne termíny.`,
             success: true,
             availableTimes: [],
             timestamp: new Date().toISOString()
@@ -251,8 +268,9 @@ export default async function handler(req, res) {
           });
         }
 
+        const formattedDate = formatDateForSlovakTTS(soonest.date);
         return res.json({
-          response: `Najbližší dostupný termín je ${soonest.date} o ${soonest.display}.`,
+          response: `Najbližší dostupný termín je ${formattedDate} o ${soonest.display}.`,
           success: true,
           appointment: {
             date: soonest.date,
