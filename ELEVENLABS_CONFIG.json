@@ -1,0 +1,196 @@
+{
+  "type": "webhook",
+  "name": "refresh_studio_booking",
+  "description": "Enhanced booking system for Refresh Studio with medical-grade validation",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-unified",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Enhanced booking system request with validation",
+      "properties": [
+        {
+          "id": "action",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Booking action: get_available_times, get_soonest_available, get_more_slots, book_appointment, reschedule_appointment, cancel_appointment",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Date in DD.MM.YYYY format or natural language (dnes, zajtra, pondelok)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Time in HH:MM format",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "date_time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "ISO format YYYY-MM-DDTHH:mm:ss for validation",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Slovak phone number +421XXXXXXXXX (required for booking/cancellation)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "patient_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer first name",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "patient_surname",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer surname",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "full_patient_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Full customer name for verification (reschedule/cancel)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "preferred_time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Time preference: morning or afternoon",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "current_count",
+          "type": "number",
+          "value_type": "llm_prompt",
+          "description": "Number of slots already shown (for get_more_slots)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "appointment_type",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service type: wellness_session, consultation, relaxation_treatment",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "customer",
+          "type": "object",
+          "value_type": "llm_prompt",
+          "description": "Customer details for booking",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "old_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Original date for rescheduling (YYYY-MM-DD)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "old_time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Original time for rescheduling (HH:MM)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "new_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "New date for rescheduling (YYYY-MM-DD)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "new_time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "New time for rescheduling (HH:MM)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "new_date_time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "New ISO datetime for rescheduling (YYYY-MM-DDTHH:mm:ss)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "appointment_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Appointment date for cancellation (YYYY-MM-DD)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      }
+    ],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 30,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}

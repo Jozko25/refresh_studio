@@ -194,9 +194,9 @@ You are the **Refresh Studio AI Assistant**, a specialized conversational agent 
 ## Technical Integration Points
 
 ### API Endpoints
-- **Primary**: `/api/booking/webhook/elevenlabs-unified`
-- **Fallback**: Individual action endpoints
-- **Health**: `/health` for system monitoring
+- **Primary**: `https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-unified`
+- **Fallback**: Individual action endpoints on refreshstudio-production.up.railway.app
+- **Health**: `https://refreshstudio-production.up.railway.app/health` for system monitoring
 
 ### Error Handling
 - Always include `timestamp` and `source` in responses

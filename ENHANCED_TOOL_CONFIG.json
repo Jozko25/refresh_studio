@@ -9,7 +9,7 @@
   
   "endpoints": {
     "primary_webhook": {
-      "url": "/api/booking/webhook/elevenlabs-unified",
+      "url": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-unified",
       "method": "POST",
       "description": "Main unified endpoint for all booking operations",
       "supports_actions": [
@@ -23,10 +23,10 @@
     },
     
     "specialized_endpoints": {
-      "soonest_available": "/api/booking/webhook/elevenlabs-soonest-available",
-      "available_times": "/api/booking/webhook/elevenlabs-available-times", 
-      "book_appointment": "/api/booking/webhook/elevenlabs-book-appointment",
-      "technical_webhook": "/api/booking/webhook/soonest-available"
+      "soonest_available": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-soonest-available",
+      "available_times": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-available-times", 
+      "book_appointment": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-book-appointment",
+      "technical_webhook": "https://refreshstudio-production.up.railway.app/api/booking/webhook/soonest-available"
     }
   },
 
@@ -346,7 +346,7 @@
   },
 
   "integration_settings": {
-    "primary_endpoint": "https://your-domain.com/api/booking/webhook/elevenlabs-unified",
+    "primary_endpoint": "https://refreshstudio-production.up.railway.app/api/booking/webhook/elevenlabs-unified",
     "webhook_timeout": 30,
     "retry_attempts": 3,
     "rate_limiting": {
