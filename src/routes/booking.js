@@ -839,24 +839,36 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         });
         
       case 'book_appointment':
-        if (!date || !time) {
+        if (!date || !time || !phone) {
           return res.status(400).json({
-            response: "Ľutujem, potrebujem dátum a čas pre rezerváciu.",
+            response: "Ľutujem, potrebujem dátum, čas a telefónne číslo pre rezerváciu.",
             success: false,
             timestamp: new Date().toISOString()
           });
         }
         
-        // Build customer data from individual parameters
+        // Parse name from full_patient_name or use individual parts
+        let firstName = 'Customer';
+        let lastName = 'Name';
+        
+        if (full_patient_name) {
+          const nameParts = full_patient_name.split(' ');
+          firstName = nameParts[0] || 'Customer';
+          lastName = nameParts.slice(1).join(' ') || 'Name';
+        } else if (patient_name && patient_surname) {
+          firstName = patient_name;
+          lastName = patient_surname;
+        }
+        
         const customerData = {
-          firstName: patient_name || 'Name',
-          lastName: patient_surname || 'Surname', 
+          firstName: firstName,
+          lastName: lastName,
           email: 'customer@bookio.com',
-          phone: phone || '+421900000000',
-          note: `Rezervácia cez AI asistenta - ${full_patient_name || `${patient_name} ${patient_surname}`}`
+          phone: phone,
+          note: `AI rezervácia - ${firstName} ${lastName}`
         };
         
-        console.log(`🔍 Booking with customer data:`, customerData);
+        console.log(`🔍 Booking for: ${firstName} ${lastName}, ${phone}`);
         
         // Check availability first
         const availability = await bookioService.checkSlotAvailability(130113, 31576, `${date} 10:00`, time);
