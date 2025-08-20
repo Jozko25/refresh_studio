@@ -847,17 +847,17 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
           });
         }
         
-        // Parse name from full_patient_name or use individual parts
+        // Handle name parsing - support both formats
         let firstName = 'Customer';
         let lastName = 'Name';
         
-        if (full_patient_name) {
-          const nameParts = full_patient_name.split(' ');
+        // Check for full name in any format
+        const fullName = full_patient_name || req.body.customer_name || req.body.name || `${patient_name || ''} ${patient_surname || ''}`.trim();
+        
+        if (fullName && fullName !== ' ') {
+          const nameParts = fullName.split(' ').filter(part => part.length > 0);
           firstName = nameParts[0] || 'Customer';
           lastName = nameParts.slice(1).join(' ') || 'Name';
-        } else if (patient_name && patient_surname) {
-          firstName = patient_name;
-          lastName = patient_surname;
         }
         
         const customerData = {

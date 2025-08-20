@@ -1,7 +1,7 @@
 {
   "type": "webhook",
   "name": "booking_system",
-  "description": "Kompletný systém rezervácie termínov pre Refresh Studio Bratislava. Môže vyhľadávať voľné termíny, rezervovať, rušiť a presúvať termíny.",
+  "description": "Rezervačný systém pre Refresh Studio Bratislava",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
   "assignments": [],
@@ -13,13 +13,22 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "Booking system request",
+      "description": "Booking request",
       "properties": [
+        {
+          "id": "action",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Action type: get_available_slots, find_closest_slot, book_appointment",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
         {
           "id": "date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Dátum vo formáte DD.MM.YYYY",
+          "description": "Date in DD.MM.YYYY format",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -28,7 +37,7 @@
           "id": "time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Čas vo formáte HH:MM",
+          "description": "Time in HH:MM format",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -37,16 +46,16 @@
           "id": "phone",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Telefónne číslo zákazníka (+421XXXXXXXXX)",
+          "description": "Customer phone number",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
         },
         {
-          "id": "full_patient_name",
+          "id": "customer_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Celé meno zákazníka",
+          "description": "Full customer name",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -55,19 +64,10 @@
           "id": "preferred_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Preferovaný čas: morning alebo afternoon",
+          "description": "Preferred time: morning or afternoon",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
-        },
-        {
-          "id": "action",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Typ akcie: get_available_slots, find_closest_slot, book_appointment",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": true
         }
       ],
       "required": false,
