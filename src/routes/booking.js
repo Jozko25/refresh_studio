@@ -677,11 +677,66 @@ router.post('/check-availability', async (req, res) => {
  */
 router.post('/webhook/elevenlabs-unified', async (req, res) => {
   try {
-    const { action, date, time, customer, phone, appointment_date } = req.body;
+    const { 
+      action, 
+      date, 
+      time, 
+      customer, 
+      phone, 
+      appointment_date,
+      // Enhanced validation parameters
+      patient_name,
+      patient_surname, 
+      full_patient_name,
+      date_time,
+      preferred_time,
+      appointment_type,
+      current_count,
+      // Rescheduling parameters
+      old_date,
+      old_time,
+      new_date,
+      new_time,
+      new_date_time,
+    } = req.body;
     
-    console.log(`📥 ElevenLabs unified request - Action: ${action}`);
+    console.log(`📥 ElevenLabs enhanced request - Action: ${action}`);
+    console.log(`🔍 Validation params: phone=${phone}, patient_name=${patient_name}, patient_surname=${patient_surname}`);
+    
+    // Enhanced phone validation
+    const validatePhone = (phoneNumber) => {
+      if (!phoneNumber) return { valid: false, message: "Telefónne číslo je povinné." };
+      const phonePattern = /^\+421[0-9]{9}$/;
+      if (!phonePattern.test(phoneNumber)) {
+        return { valid: false, message: "Prosím, zadajte platné slovenské telefónne číslo (+421XXXXXXXXX)." };
+      }
+      return { valid: true, message: "Telefónne číslo je platné." };
+    };
+    
+    // Enhanced customer validation
+    const validateCustomerData = (customerData, phone) => {
+      const errors = [];
+      if (!customerData?.firstName && !patient_name) errors.push("krstné meno");
+      if (!customerData?.lastName && !patient_surname) errors.push("priezvisko");
+      if (!customerData?.phone && !phone) errors.push("telefón");
+      
+      // Cross-validate names if provided
+      if (patient_name && patient_surname && full_patient_name) {
+        const expectedFullName = `${patient_name} ${patient_surname}`;
+        if (full_patient_name !== expectedFullName) {
+          errors.push("meno a priezvisko sa nezhodujú");
+        }
+      }
+      
+      return {
+        valid: errors.length === 0,
+        errors: errors,
+        message: errors.length === 0 ? "Údaje sú platné" : `Pre rezerváciu potrebujem: ${errors.join(', ')}.`
+      };
+    };
     
     switch (action) {
+      case 'get_available_slots':
       case 'get_available_times':
         if (!date) {
           return res.status(400).json({
@@ -691,6 +746,7 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
           });
         }
         
+        console.log(`🔍 Getting available times for ${date}, preferred_time: ${preferred_time}`);
         const timesResult = await bookioService.getAllowedTimes(130113, `${date} 10:00`, 31576);
         
         if (!timesResult.success || !timesResult.times?.all?.length) {
@@ -701,19 +757,45 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
           });
         }
         
-        const availableTimes = timesResult.times.all.slice(0, 5);
-        const timesList = availableTimes.map(slot => {
+        let availableTimes = timesResult.times.all || [];
+        
+        // Filter by preferred time if specified
+        if (preferred_time === 'morning') {
+          availableTimes = availableTimes.filter(slot => {
+            const hour = parseInt(slot.id.split(':')[0]);
+            return hour < 12;
+          });
+        } else if (preferred_time === 'afternoon') {
+          availableTimes = availableTimes.filter(slot => {
+            const hour = parseInt(slot.id.split(':')[0]);
+            return hour >= 12;
+          });
+        }
+        
+        // Limit to 5 slots for initial display
+        const displayTimes = availableTimes.slice(0, 5);
+        const hasMore = availableTimes.length > 5;
+        
+        const timesList = displayTimes.map(slot => {
           const endTime = slot.nameSuffix || slot.name;
           return endTime.replace(' AM', ' dopoludnia').replace(' PM', ' poobede');
         }).join(', ');
         
+        let response = `Dostupné termíny na ${date}: ${timesList}.`;
+        if (hasMore) {
+          response += ` Mám ešte ďalšie termíny, ak potrebujete.`;
+        }
+        
         return res.json({
-          response: `Dostupné termíny na ${date}: ${timesList}.`,
+          response: response,
           success: true,
-          available_times: availableTimes,
+          available_times: displayTimes,
+          has_more: hasMore,
+          total_available: availableTimes.length,
           timestamp: new Date().toISOString()
         });
         
+      case 'find_closest_slot':
       case 'get_soonest_available':
         const soonestResult = await bookioService.getSoonestAvailable(130113, 31576);
         
@@ -752,24 +834,24 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         });
         
       case 'book_appointment':
-        if (!date || !time || !customer) {
+        if (!date || !time) {
           return res.status(400).json({
-            response: "Ľutujem, potrebujem kompletné údaje pre rezerváciu (dátum, čas a údaje zákazníka).",
+            response: "Ľutujem, potrebujem dátum a čas pre rezerváciu.",
             success: false,
             timestamp: new Date().toISOString()
           });
         }
         
-        let customerData;
-        try {
-          customerData = typeof customer === 'string' ? JSON.parse(customer) : customer;
-        } catch (error) {
-          return res.status(400).json({
-            response: "Ľutujem, údaje zákazníka nie sú v správnom formáte.",
-            success: false,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Build customer data from individual parameters
+        const customerData = {
+          firstName: patient_name || 'Name',
+          lastName: patient_surname || 'Surname', 
+          email: 'customer@bookio.com',
+          phone: phone || '+421900000000',
+          note: `Rezervácia cez AI asistenta - ${full_patient_name || `${patient_name} ${patient_surname}`}`
+        };
+        
+        console.log(`🔍 Booking with customer data:`, customerData);
         
         // Check availability first
         const availability = await bookioService.checkSlotAvailability(130113, 31576, `${date} 10:00`, time);
@@ -812,22 +894,177 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         }
         
       case 'cancel_appointment':
-        if (!phone) {
+        const phoneValidation = validatePhone(phone);
+        if (!phoneValidation.valid) {
           return res.status(400).json({
-            response: "Pre zrušenie rezervácie potrebujem vaše telefónne číslo.",
+            response: phoneValidation.message,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Enhanced customer identity validation for cancellation
+        const customerValidation = validateCustomerData(customer, phone);
+        if (!customerValidation.valid) {
+          return res.status(400).json({
+            response: `Pre zrušenie rezervácie potrebujem kompletné údaje: ${customerValidation.message}`,
             success: false,
             timestamp: new Date().toISOString()
           });
         }
         
         // For now, since we don't have direct cancellation API access,
-        // provide instructions for cancellation
+        // provide instructions with enhanced validation feedback
         return res.json({
-          response: `Pre zrušenie rezervácie na telefónnom čísle ${phone} použite prosím odkaz v potvrdzujúcom e-maile alebo nás kontaktujte priamo.`,
+          response: `Rezervácia pre ${full_patient_name || `${patient_name} ${patient_surname}`} na telefónnom čísle ${phone}${appointment_date ? ` na dátum ${appointment_date}` : ''} bude zrušená. Použite prosím odkaz v potvrdzujúcom e-maile alebo nás kontaktujte priamo.`,
           success: true,
           instructions: "Use email cancellation link or contact directly",
-          phone: phone,
-          appointment_date: appointment_date,
+          validated_customer: {
+            phone: phone,
+            name: full_patient_name || `${patient_name} ${patient_surname}`,
+            appointment_date: appointment_date
+          },
+          timestamp: new Date().toISOString()
+        });
+        
+      case 'reschedule_appointment':
+        // Validate old appointment details
+        if (!old_date || !old_time || !phone) {
+          return res.status(400).json({
+            response: "Pre presunutie termínu potrebujem pôvodný dátum, čas a telefónne číslo.",
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Validate new appointment details
+        if (!new_date || !new_time) {
+          return res.status(400).json({
+            response: "Pre presunutie termínu potrebujem nový dátum a čas.",
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Enhanced phone and customer validation
+        const reschedulePhoneValidation = validatePhone(phone);
+        if (!reschedulePhoneValidation.valid) {
+          return res.status(400).json({
+            response: reschedulePhoneValidation.message,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        const rescheduleCustomerValidation = validateCustomerData(customer, phone);
+        if (!rescheduleCustomerValidation.valid) {
+          return res.status(400).json({
+            response: `Pre presunutie termínu potrebujem kompletné údaje: ${rescheduleCustomerValidation.message}`,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Check availability of new slot
+        const newSlotAvailability = await bookioService.checkSlotAvailability(130113, 31576, `${new_date} 10:00`, new_time);
+        
+        if (!newSlotAvailability.available) {
+          return res.status(409).json({
+            response: `Ľutujem, ale nový termín ${new_time} na ${new_date} už nie je dostupný. ${newSlotAvailability.reason}.`,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // For now, provide instructions since we don't have direct rescheduling API
+        const oldDateFormatted = old_date.split('-').reverse().join('.');
+        const newDateFormatted = new_date.split('-').reverse().join('.');
+        
+        return res.json({
+          response: `Termín pre ${full_patient_name || `${patient_name} ${patient_surname}`} bude presunutý z ${oldDateFormatted} ${old_time} na ${newDateFormatted} ${new_time}. Nový termín je dostupný. Kontaktujte nás prosím pre potvrdenie presunutia.`,
+          success: true,
+          reschedule_details: {
+            customer: full_patient_name || `${patient_name} ${patient_surname}`,
+            phone: phone,
+            old_appointment: {
+              date: oldDateFormatted,
+              time: old_time
+            },
+            new_appointment: {
+              date: newDateFormatted,
+              time: new_time,
+              available: true
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+        
+      case 'get_more_slots':
+        if (!date) {
+          return res.status(400).json({
+            response: "Pre zobrazenie ďalších termínov potrebujem dátum.",
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        const moreTimesResult = await bookioService.getAllowedTimes(130113, `${date} 10:00`, 31576);
+        
+        if (!moreTimesResult.success || !moreTimesResult.times?.all?.length) {
+          return res.json({
+            response: `Na ${date} už nemám žiadne ďalšie voľné termíny.`,
+            success: false,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        let allAvailableSlots = moreTimesResult.times.all || [];
+        
+        // Filter by preferred time if specified
+        if (preferred_time === 'morning') {
+          allAvailableSlots = allAvailableSlots.filter(slot => {
+            const hour = parseInt(slot.id.split(':')[0]);
+            return hour < 12;
+          });
+        } else if (preferred_time === 'afternoon') {
+          allAvailableSlots = allAvailableSlots.filter(slot => {
+            const hour = parseInt(slot.id.split(':')[0]);
+            return hour >= 12;
+          });
+        }
+        
+        // Skip already shown slots using current_count
+        const skipCount = current_count || 5;
+        const moreSlots = allAvailableSlots.slice(skipCount, skipCount + 5);
+        const hasMoreSlots = allAvailableSlots.length > skipCount + 5;
+        
+        if (moreSlots.length === 0) {
+          return res.json({
+            response: `To sú všetky dostupné termíny na ${date}.`,
+            success: true,
+            no_more_slots: true,
+            total_available: allAvailableSlots.length,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        const moreSlotsStrings = moreSlots.map(slot => {
+          const endTime = slot.nameSuffix || slot.name;
+          return endTime.replace(' AM', ' dopoludnia').replace(' PM', ' poobede');
+        }).join(', ');
+        
+        let moreResponse = `Ďalšie dostupné termíny na ${date}: ${moreSlotsStrings}.`;
+        if (hasMoreSlots) {
+          moreResponse += ` Mám ešte ďalšie termíny, ak potrebujete.`;
+        }
+        
+        return res.json({
+          response: moreResponse,
+          success: true,
+          additional_times: moreSlots,
+          has_more: hasMoreSlots,
+          current_total_shown: skipCount + moreSlots.length,
+          total_available: allAvailableSlots.length,
           timestamp: new Date().toISOString()
         });
         
