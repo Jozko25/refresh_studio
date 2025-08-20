@@ -1008,6 +1008,9 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
           });
         }
         
+        // Handle missing current_count parameter
+        const currentCount = current_count || 0;
+        
         const moreTimesResult = await bookioService.getAllowedTimes(130113, `${date} 10:00`, 31576);
         
         if (!moreTimesResult.success || !moreTimesResult.times?.all?.length) {
@@ -1034,7 +1037,7 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         }
         
         // Skip already shown slots using current_count
-        const skipCount = current_count || 5;
+        const skipCount = currentCount || 5;
         const moreSlots = allAvailableSlots.slice(skipCount, skipCount + 5);
         const hasMoreSlots = allAvailableSlots.length > skipCount + 5;
         
