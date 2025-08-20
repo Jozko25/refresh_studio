@@ -1,7 +1,7 @@
 {
   "type": "webhook",
   "name": "refresh_studio_booking",
-  "description": "Enhanced booking system for Refresh Studio with medical-grade validation",
+  "description": "Kompletný systém rezervácie termínov pre Refresh Studio s pokročilou validáciou",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
   "assignments": [],
@@ -13,13 +13,13 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "Enhanced booking system request with validation",
+      "description": "Refresh Studio booking system request",
       "properties": [
         {
           "id": "action",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Booking action: get_available_times, get_soonest_available, get_more_slots, book_appointment, reschedule_appointment, cancel_appointment",
+          "description": "Typ akcie: get_available_times, get_soonest_available, get_more_slots, book_appointment, reschedule_appointment, cancel_appointment",
           "dynamic_variable": "",
           "constant_value": "",
           "required": true
@@ -28,7 +28,7 @@
           "id": "date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Date in DD.MM.YYYY format or natural language (dnes, zajtra, pondelok)",
+          "description": "Dátum vo formáte DD.MM.YYYY alebo prirodzený jazyk (dnes, zajtra, pondelok)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -37,7 +37,7 @@
           "id": "time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Time in HH:MM format",
+          "description": "Čas vo formáte HH:MM",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -46,7 +46,7 @@
           "id": "date_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "ISO format YYYY-MM-DDTHH:mm:ss for validation",
+          "description": "ISO formát YYYY-MM-DDTHH:mm:ss pre validáciu",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -55,7 +55,7 @@
           "id": "phone",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Slovak phone number +421XXXXXXXXX (required for booking/cancellation)",
+          "description": "Slovenské telefónne číslo +421XXXXXXXXX (povinné pre rezerváciu/zrušenie)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -64,7 +64,7 @@
           "id": "patient_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Customer first name",
+          "description": "Krstné meno zákazníka",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -73,7 +73,7 @@
           "id": "patient_surname",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Customer surname",
+          "description": "Priezvisko zákazníka",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -82,7 +82,7 @@
           "id": "full_patient_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Full customer name for verification (reschedule/cancel)",
+          "description": "Celé meno zákazníka pre overenie (presunutie/zrušenie)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -91,7 +91,7 @@
           "id": "preferred_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Time preference: morning or afternoon",
+          "description": "Preferovaný čas: morning alebo afternoon",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -100,7 +100,7 @@
           "id": "current_count",
           "type": "number",
           "value_type": "llm_prompt",
-          "description": "Number of slots already shown (for get_more_slots)",
+          "description": "Počet už zobrazených termínov (pre get_more_slots)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -109,7 +109,7 @@
           "id": "appointment_type",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Service type: wellness_session, consultation, relaxation_treatment",
+          "description": "Typ služby: wellness_session, consultation, relaxation_treatment",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -118,7 +118,7 @@
           "id": "customer",
           "type": "object",
           "value_type": "llm_prompt",
-          "description": "Customer details for booking",
+          "description": "Údaje zákazníka pre rezerváciu",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -127,7 +127,7 @@
           "id": "old_date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Original date for rescheduling (YYYY-MM-DD)",
+          "description": "Pôvodný dátum pre presunutie (YYYY-MM-DD)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -136,7 +136,7 @@
           "id": "old_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Original time for rescheduling (HH:MM)",
+          "description": "Pôvodný čas pre presunutie (HH:MM)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -145,7 +145,7 @@
           "id": "new_date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "New date for rescheduling (YYYY-MM-DD)",
+          "description": "Nový dátum pre presunutie (YYYY-MM-DD)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -154,7 +154,7 @@
           "id": "new_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "New time for rescheduling (HH:MM)",
+          "description": "Nový čas pre presunutie (HH:MM)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -163,7 +163,7 @@
           "id": "new_date_time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "New ISO datetime for rescheduling (YYYY-MM-DDTHH:mm:ss)",
+          "description": "Nový ISO dátum a čas pre presunutie (YYYY-MM-DDTHH:mm:ss)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -172,7 +172,7 @@
           "id": "appointment_date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Appointment date for cancellation (YYYY-MM-DD)",
+          "description": "Dátum termínu pre zrušenie (YYYY-MM-DD)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
