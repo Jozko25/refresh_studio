@@ -1,7 +1,7 @@
 {
   "type": "webhook",
   "name": "booking_system",
-  "description": "Rezervačný systém pre Refresh Studio Bratislava",
+  "description": "Booking system for Refresh Studio Bratislava",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
   "assignments": [],
@@ -19,7 +19,7 @@
           "id": "action",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Action type: get_available_slots, find_closest_slot, book_appointment",
+          "description": "Action: get_available_slots, find_closest_slot, book_appointment",
           "dynamic_variable": "",
           "constant_value": "",
           "required": true
@@ -28,7 +28,7 @@
           "id": "date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Date in DD.MM.YYYY format",
+          "description": "Date DD.MM.YYYY",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -37,7 +37,7 @@
           "id": "time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Time in HH:MM format",
+          "description": "Time HH:MM",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -46,16 +46,7 @@
           "id": "phone",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Customer phone number",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": false
-        },
-        {
-          "id": "customer_name",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Full customer name",
+          "description": "Phone +421XXXXXXXXX",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -64,16 +55,7 @@
           "id": "customer",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Customer full name",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": false
-        },
-        {
-          "id": "preferred_time",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Preferred time: morning or afternoon",
+          "description": "Full customer name",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false

@@ -840,6 +840,8 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         });
         
       case 'book_appointment':
+        console.log('🔍 Raw booking request:', JSON.stringify(req.body, null, 2));
+        
         if (!date || !time || !phone) {
           return res.status(400).json({
             response: "Ľutujem, potrebujem dátum, čas a telefónne číslo pre rezerváciu.",
@@ -848,64 +850,53 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
           });
         }
         
-        // Handle name parsing - support both formats
+        // Handle name parsing - accept any name field
         let firstName = 'Customer';
         let lastName = 'Name';
         
-        // Check for full name in any format
-        const fullName = full_patient_name || customer_name || customer || req.body.name || `${patient_name || ''} ${patient_surname || ''}`.trim();
-        
-        if (fullName && fullName !== ' ') {
-          const nameParts = fullName.split(' ').filter(part => part.length > 0);
-          firstName = nameParts[0] || 'Customer';
-          lastName = nameParts.slice(1).join(' ') || 'Name';
-        }
+        const fullName = customer || customer_name || full_patient_name || 'Customer Name';
+        const nameParts = fullName.split(' ').filter(part => part.length > 0);
+        firstName = nameParts[0] || 'Customer';
+        lastName = nameParts.slice(1).join(' ') || 'Name';
         
         const customerData = {
           firstName: firstName,
           lastName: lastName,
-          email: 'customer@bookio.com',
+          email: 'customer@refreshstudio.sk',
           phone: phone,
-          note: `AI rezervácia - ${firstName} ${lastName}`
+          note: `ElevenLabs booking - ${fullName}`
         };
         
-        console.log(`🔍 Booking for: ${firstName} ${lastName}, ${phone}`);
+        console.log(`🔍 Processed booking data:`, customerData);
         
-        // Check availability first
-        const availability = await bookioService.checkSlotAvailability(130113, 31576, `${date} 10:00`, time);
-        
-        if (!availability.available) {
-          return res.status(409).json({
-            response: `Ľutujem, ale zvolený termín ${time} na ${date} už nie je dostupný. ${availability.reason}.`,
-            success: false,
-            timestamp: new Date().toISOString()
-          });
-        }
-        
-        // Attempt booking
-        const bookingResult = await bookioService.bookAppointment(130113, 31576, `${date} 10:00`, time, customerData);
-        
-        if (bookingResult.success) {
-          const [day, month, year] = date.split('.');
-          const formattedTime = time.replace(':', ':');
+        try {
+          // Direct booking without availability check to avoid race conditions
+          const bookingResult = await bookioService.bookAppointment(130113, 31576, `${date} 10:00`, time, customerData);
           
-          return res.json({
-            response: `Perfektne! Váš termín na ${day}. ${month}. ${year} o ${formattedTime} bol úspešne rezervovaný pre ${customerData.firstName} ${customerData.lastName}.`,
-            success: true,
-            appointment: {
-              date: date,
-              time: time,
-              customer: `${customerData.firstName} ${customerData.lastName}`,
-              email: customerData.email,
-              phone: customerData.phone
-            },
-            order_id: bookingResult.booking?.order?.orderId,
-            timestamp: new Date().toISOString(),
-            source: "elevenlabs"
-          });
-        } else {
+          if (bookingResult.success) {
+            return res.json({
+              response: `Perfektne! Váš termín na ${date} o ${time} bol úspešne rezervovaný pre ${fullName}.`,
+              success: true,
+              appointment: {
+                date: date,
+                time: time,
+                customer: fullName,
+                phone: phone
+              },
+              timestamp: new Date().toISOString()
+            });
+          } else {
+            return res.status(409).json({
+              response: `Ľutujem, ale termín ${time} na ${date} už nie je dostupný. Môžem vám ponúknuť iný termín.`,
+              success: false,
+              error: bookingResult.error,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          console.error('Booking error:', error);
           return res.status(500).json({
-            response: `Ľutujem, rezervácia sa nepodarila. ${bookingResult.error}`,
+            response: "Ľutujem, vyskytla sa chyba pri rezervácii. Skúste to prosím znova.",
             success: false,
             timestamp: new Date().toISOString()
           });
