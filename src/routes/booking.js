@@ -797,39 +797,44 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         
       case 'find_closest_slot':
       case 'get_soonest_available':
-        const soonestResult = await bookioService.getSoonestAvailable(130113, 31576);
+        // Check next 14 days for available slots
+        const today = new Date();
         
-        if (!soonestResult.success) {
-          return res.json({
-            response: "Momentálne nemám prístup k informáciám o najbližších termínoch. Skúste to prosím neskôr.",
-            success: false,
-            timestamp: new Date().toISOString()
-          });
+        for (let i = 0; i < 14; i++) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() + i);
+          const displayDate = checkDate.toLocaleDateString('sk-SK'); // DD.MM.YYYY
+          
+          const dayResult = await bookioService.getAllowedTimes(130113, `${displayDate} 10:00`, 31576);
+          
+          if (dayResult.success && dayResult.times?.all?.length > 0) {
+            const firstAvailable = dayResult.times.all[0];
+            
+            // Format date to Slovak
+            const dayName = checkDate.toLocaleDateString('sk-SK', { weekday: 'long' });
+            const monthName = checkDate.toLocaleDateString('sk-SK', { month: 'long' });
+            const dayNum = checkDate.getDate();
+            
+            // Convert time format
+            const displayTime = (firstAvailable.nameSuffix || firstAvailable.name).replace(' AM', ' dopoludnia').replace(' PM', ' poobede');
+            
+            return res.json({
+              response: `Najbližší dostupný termín je v ${dayName} ${dayNum}. ${monthName} o ${displayTime}.`,
+              success: true,
+              soonest_slot: {
+                date: displayDate,
+                time: firstAvailable.id,
+                display_time: displayTime,
+                slot: firstAvailable
+              },
+              timestamp: new Date().toISOString()
+            });
+          }
         }
         
-        const soonestData = soonestResult.soonestAvailable;
-        const firstSlot = soonestData.firstTime;
-        const soonestDate = soonestData.date.split(' ')[0]; // "18.08.2025 10:00" -> "18.08.2025"
-        const soonestTime = firstSlot.nameSuffix || firstSlot.name; // Use end time for display
-        
-        // Format date to Slovak
-        const [day, month, year] = soonestDate.split('.');
-        const dateObj = new Date(year, month - 1, day);
-        const dayName = dateObj.toLocaleDateString('sk-SK', { weekday: 'long' });
-        const monthName = dateObj.toLocaleDateString('sk-SK', { month: 'long' });
-        
-        // Convert time format
-        const formattedTime = soonestTime.replace(' AM', ' dopoludnia').replace(' PM', ' poobede');
-        
         return res.json({
-          response: `Najbližší dostupný termín je v ${dayName} ${day}. ${monthName} o ${formattedTime}.`,
-          success: true,
-          soonest_slot: {
-            date: soonestDate,
-            time: firstSlot.id,
-            display_time: formattedTime,
-            slot: firstSlot
-          },
+          response: "V najbližších 14 dňoch nemáme žiadne voľné termíny. Kontaktujte nás prosím priamo.",
+          success: false,
           timestamp: new Date().toISOString()
         });
         
