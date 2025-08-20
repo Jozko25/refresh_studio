@@ -61,6 +61,15 @@
           "required": false
         },
         {
+          "id": "customer",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer full name",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
           "id": "preferred_time",
           "type": "string",
           "value_type": "llm_prompt",

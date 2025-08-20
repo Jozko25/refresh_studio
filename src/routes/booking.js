@@ -682,6 +682,7 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
       date, 
       time, 
       customer, 
+      customer_name,
       phone, 
       appointment_date,
       // Enhanced validation parameters
@@ -852,7 +853,7 @@ router.post('/webhook/elevenlabs-unified', async (req, res) => {
         let lastName = 'Name';
         
         // Check for full name in any format
-        const fullName = full_patient_name || req.body.customer_name || req.body.name || `${patient_name || ''} ${patient_surname || ''}`.trim();
+        const fullName = full_patient_name || customer_name || customer || req.body.name || `${patient_name || ''} ${patient_surname || ''}`.trim();
         
         if (fullName && fullName !== ' ') {
           const nameParts = fullName.split(' ').filter(part => part.length > 0);
