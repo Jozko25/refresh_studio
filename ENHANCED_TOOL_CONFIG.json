@@ -32,8 +32,8 @@
 
   "tools": [
     {
-      "name": "check_availability",
-      "description": "Check available appointment times for specific dates or periods",
+      "name": "check_availability", 
+      "description": "Check available appointment times for specific dates or periods with validation",
       "parameters": {
         "type": "object",
         "properties": {
@@ -47,9 +47,18 @@
             "enum": ["ráno", "dopoludnie", "poludnie", "popoludnie", "večer"],
             "description": "Optional time period filter"
           },
+          "preferred_time": {
+            "type": "string",
+            "enum": ["morning", "afternoon"],
+            "description": "Preferred time period for validation"
+          },
           "previous_time": {
             "type": "string",
             "description": "Previous time shown to customer for follow-up requests"
+          },
+          "current_count": {
+            "type": "number",
+            "description": "Number of slots already shown for pagination"
           }
         },
         "required": ["action"]
@@ -60,6 +69,26 @@
         "availableTimes": "array of available slots",
         "hasMore": "boolean indicating if more slots exist",
         "isFollowUp": "boolean"
+      }
+    },
+
+    {
+      "name": "get_more_slots",
+      "description": "Get additional available time slots beyond initially shown",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string", "enum": ["get_more_slots"]},
+          "current_count": {"type": "number", "description": "Number of slots already displayed"},
+          "date": {"type": "string", "description": "Date for additional slots"},
+          "time_period": {"type": "string", "description": "Time period filter if applicable"}
+        },
+        "required": ["action", "current_count"]
+      },
+      "returns": {
+        "response": "Slovak response with additional available times",
+        "success": "boolean",
+        "availableTimes": "array of additional time slots"
       }
     },
 
@@ -119,13 +148,20 @@
 
     {
       "name": "book_appointment",
-      "description": "Create a new appointment booking",
+      "description": "Create a new appointment booking with full validation",
       "parameters": {
         "type": "object",
         "properties": {
           "action": {"type": "string", "enum": ["book_appointment"]},
           "date": {"type": "string", "description": "Date in DD.MM.YYYY format"},
           "time": {"type": "string", "description": "Time in HH:MM format"},
+          "date_time": {"type": "string", "description": "ISO format YYYY-MM-DDTHH:mm:ss for validation"},
+          "patient_name": {"type": "string", "description": "Customer first name for validation"},
+          "patient_surname": {"type": "string", "description": "Customer surname for validation"},
+          "full_patient_name": {"type": "string", "description": "Full customer name for cross-validation"},
+          "phone": {"type": "string", "description": "Phone number for verification - required"},
+          "preferred_time": {"type": "string", "enum": ["morning", "afternoon"], "description": "Time preference for validation"},
+          "appointment_type": {"type": "string", "description": "Service type: wellness_session, consultation, etc."},
           "customer": {
             "type": "object",
             "properties": {
@@ -135,14 +171,14 @@
               "phone": {"type": "string"},
               "note": {"type": "string", "description": "Optional customer note"}
             },
-            "required": ["firstName", "lastName", "email"]
+            "required": ["firstName", "lastName", "phone"]
           }
         },
-        "required": ["action", "date", "time", "customer"]
+        "required": ["action", "date", "time", "date_time", "phone", "customer"]
       },
       "returns": {
         "response": "Slovak booking confirmation message",
-        "success": "boolean",
+        "success": "boolean", 
         "booking": "booking details object",
         "order": "order information object"
       }
@@ -150,20 +186,47 @@
 
     {
       "name": "cancel_appointment",
-      "description": "Provide cancellation instructions for existing appointment",
+      "description": "Cancel existing appointment with identity verification",
       "parameters": {
         "type": "object",
         "properties": {
           "action": {"type": "string", "enum": ["cancel_appointment"]},
-          "phone": {"type": "string", "description": "Customer phone number"},
-          "appointment_date": {"type": "string", "description": "Appointment date if known"}
+          "phone": {"type": "string", "description": "Customer phone number for verification"},
+          "full_patient_name": {"type": "string", "description": "Full customer name for verification"},
+          "appointment_date": {"type": "string", "description": "Appointment date in YYYY-MM-DD format"},
+          "patient_name": {"type": "string", "description": "Customer first name"},
+          "patient_surname": {"type": "string", "description": "Customer surname"}
         },
-        "required": ["action", "phone"]
+        "required": ["action", "phone", "full_patient_name"]
       },
       "returns": {
-        "response": "Slovak instructions for cancellation process",
+        "response": "Slovak cancellation confirmation or instructions",
         "success": "boolean",
-        "instructions": "cancellation method information"
+        "instructions": "cancellation process information"
+      }
+    },
+
+    {
+      "name": "reschedule_appointment",
+      "description": "Reschedule existing appointment with validation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string", "enum": ["reschedule_appointment"]},
+          "phone": {"type": "string", "description": "Customer phone for verification"},
+          "full_patient_name": {"type": "string", "description": "Full name for verification"},
+          "old_date": {"type": "string", "description": "Original appointment date YYYY-MM-DD"},
+          "old_time": {"type": "string", "description": "Original appointment time HH:MM"},
+          "new_date": {"type": "string", "description": "New appointment date YYYY-MM-DD"},
+          "new_time": {"type": "string", "description": "New appointment time HH:MM"},
+          "new_date_time": {"type": "string", "description": "New appointment ISO format YYYY-MM-DDTHH:mm:ss"}
+        },
+        "required": ["action", "phone", "full_patient_name", "old_date", "old_time", "new_date", "new_time"]
+      },
+      "returns": {
+        "response": "Slovak rescheduling confirmation message",
+        "success": "boolean",
+        "appointment": "updated appointment details"
       }
     }
   ],
@@ -187,7 +250,19 @@
       "success": "Perfektne! Váš termín na {date} o {time} bol úspešne rezervovaný pre {customer}.",
       "validation_error": "Ľutujem, ale zadané údaje nie sú kompletné. {error_details}.",
       "slot_unavailable": "Ľutujem, ale zvolený termín už nie je dostupný.",
-      "booking_failed": "Ľutujem, rezervácia sa nepodarila. {error_reason}."
+      "booking_failed": "Ľutujem, rezervácia sa nepodarila. {error_reason}.",
+      "verification_needed": "Pre dokončenie rezervácie potrebujem vaše telefónne číslo.",
+      "data_confirmation": "Skontrolujme údaje: {full_name}, telefón {phone}, termín {date} o {time}. Súhlasíte?",
+      "duplicate_prevented": "Už máte rezervovaný termín na tento dátum. Chcete ho presunúť?",
+      "slot_double_check": "Overujem dostupnosť termínu pred rezerváciou..."
+    },
+
+    "validation_responses": {
+      "phone_invalid": "Prosím, zadajte platné slovenské telefónne číslo (+421XXXXXXXXX).",
+      "name_mismatch": "Meno a priezvisko sa nezhodujú. Prosím, skontrolujte údaje.",
+      "missing_required": "Pre rezerváciu potrebujem: {missing_fields}.",
+      "appointment_conflict": "Na tento čas už máte rezervovaný termín. Ponúknem alternatívu.",
+      "date_invalid": "Dátum musí byť v budúcnosti. Prosím, vyberte iný dátum."
     },
 
     "error_responses": {
@@ -231,7 +306,7 @@
   "business_rules": {
     "facility_info": {
       "name": "Refresh Studio",
-      "address": "Ihrisková 4, Bratislava-Rača",
+      "address": "Ihrisková 4, Bratislava-Rača", 
       "service_duration": "10 minút",
       "description": "Wellness a relaxačné centrum s profesionálnymi službami"
     },
@@ -242,6 +317,24 @@
       "max_slots_shown": 3,
       "default_service_id": 130113,
       "default_worker_id": 31576
+    },
+
+    "validation_rules": {
+      "phone_pattern": "^\\+421[0-9]{9}$",
+      "required_fields": ["firstName", "lastName", "phone"],
+      "date_formats": ["DD.MM.YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss"],
+      "max_bookings_per_customer": 3,
+      "duplicate_booking_window_hours": 2,
+      "identity_verification": ["phone", "full_name"],
+      "appointment_types": ["wellness_session", "consultation", "relaxation_treatment"]
+    },
+
+    "booking_integrity": {
+      "pre_validation_required": true,
+      "real_time_availability_check": true,
+      "customer_conflict_prevention": true,
+      "double_booking_prevention": true,
+      "slot_timeout_minutes": 10
     },
 
     "response_formatting": {

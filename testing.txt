@@ -1,0 +1,108 @@
+Great! Let me guide you through testing the enhanced booking system with voice. Here's how to
+   test the key validation features:
+
+  🎯 Voice Testing Guide
+
+  Setup First:
+
+  Make sure your voice AI system is connected to the enhanced webhook endpoint:
+  POST http://localhost:3001/api/booking/webhook/elevenlabs-unified
+
+  1. Basic Availability Check
+
+  Say: "Dobrý deň, chcel by som si rezervovať termín na zajtra popoludnie"
+
+  Expected Response: The system should ask for a specific date and then check availability with
+   time period filtering.
+
+  2. Test Phone Validation
+
+  Say: "Chcem si rezervovať termín na 25. december o 14:30"
+
+  System will ask for details, then say: "Môj telefón je 0901234567"
+
+  Expected Response: "Prosím, zadajte platné slovenské telefónne číslo (+421XXXXXXXXX)."
+
+  Correct it by saying: "Prepáčte, môj telefón je +421901234567"
+
+  3. Test Missing Information Validation
+
+  Say: "Volám sa Ján"
+
+  Expected Response: "Pre rezerváciu potrebujem: lastName, phone."
+
+  Complete by saying: "Ján Novák, telefón +421901234567"
+
+  4. Test Data Confirmation
+
+  After providing complete info, expect:
+  Expected Response: "Skontrolujme údaje: Ján Novák, telefón +421901234567, termín 25.12.2025 o
+   14:30. Súhlasíte?"
+
+  Say: "Áno, súhlasím"
+
+  5. Test Date Validation
+
+  Say: "Chcem termín na 15. august 2023" (past date)
+
+  Expected Response: "Dátum musí byť v budúcnosti. Prosím, vyberte dátum od dneška."
+
+  6. Test Reschedule Request
+
+  Say: "Chcem presunúť môj termín na iný dátum"
+
+  Expected Response: Should ask for verification: phone number and full name, then old and new
+  appointment details.
+
+  7. Test Cancellation
+
+  Say: "Chcem zrušiť moju rezerváciu"
+
+  Expected Response: "Pre overenie potrebujem vaše telefónne číslo"
+
+  🎯 Key Actions to Test:
+
+  Available Actions (say these phrases):
+
+  - "Aké máte voľné termíny na..." → get_available_times
+  - "Kedy máte najbližší voľný termín?" → get_soonest_available
+  - "Môžete mi ukázať viac termínov?" → get_more_slots
+  - "Chcem si rezervovať termín" → book_appointment
+  - "Chcem presunúť termín" → reschedule_appointment
+  - "Chcem zrušiť rezerváciu" → cancel_appointment
+
+  🧪 Expected Validation Behaviors:
+
+  ✅ Should PASS:
+
+  - Slovak phone: "+421901234567"
+  - Complete customer data: "Mária Novák, +421901234567, maria@test.sk"
+  - Future dates: "25. december 2025"
+  - Proper time format: "14:30"
+
+  ❌ Should FAIL with helpful messages:
+
+  - Invalid phone: "0901234567" → "Prosím, zadajte platné slovenské telefónne číslo"
+  - Missing info: Just first name → "Pre rezerváciu potrebujem: lastName, phone"
+  - Past dates: "15. august 2023" → "Nemôžem rezervovať termín v minulosti"
+
+  📱 Testing Sequence:
+
+  1. Start simple: Ask for availability
+  2. Provide incomplete info: Test validation messages
+  3. Provide invalid data: Test error handling
+  4. Correct the data: Test successful flow
+  5. Test modifications: Try reschedule/cancel
+
+  🎤 Voice Testing Tips:
+
+  - Speak clearly in Slovak
+  - Wait for validation responses before continuing
+  - Try intentional errors to test error handling
+  - Test the full conversation flow from inquiry to booking confirmation
+
+  The enhanced system should now catch validation errors early, provide clear Slovak guidance,
+  and ensure complete data before booking - just like your medical center system but for
+  wellness appointments!
+
+  Ready to test? Start with: "Dobrý deň, chcem si rezervovať termín na budúci týždeň"
