@@ -1,7 +1,7 @@
 {
   "type": "webhook",
-  "name": "refresh_clinic",
-  "description": "REFRESH clinic booking assistant",
+  "name": "refresh_booking",
+  "description": "REFRESH clinic services",
   "api_schema": {
     "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
     "method": "POST",
@@ -12,14 +12,14 @@
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Tool to use: search_service",
+          "description": "search_service",
           "required": true
         },
         {
-          "id": "search_term", 
-          "type": "string",
+          "id": "search_term",
+          "type": "string", 
           "value_type": "llm_prompt",
-          "description": "Service name to search for",
+          "description": "Service name",
           "required": false
         }
       ]
