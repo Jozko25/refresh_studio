@@ -103,29 +103,45 @@ router.post('/', async (req, res) => {
                 let bestService = null;
                 
                 for (const service of searchResult.services.slice(0, 3)) { // Try up to 3 services
-                    const result = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
-                    console.log(`🔍 Testing service ${service.serviceId} (${service.name}): ${result.found ? 'HAS SLOTS' : 'NO SLOTS'}`);
+                    console.log(`🔍 Testing service ${service.serviceId} (${service.name}) with robust search...`);
+                    const result = await BookioDirectService.getAvailableTimesAndDays(service.serviceId, worker_id);
+                    console.log(`🔍 Service ${service.serviceId} (${service.name}): ${result.success ? 'HAS SLOTS' : 'NO SLOTS'}`);
                     
-                    if (result.success && result.found) {
+                    if (result.success && result.soonestDate) {
                         availabilityResult = result;
                         bestService = service;
+                        console.log(`✅ Found available service: ${service.name} on ${result.soonestDate} at ${result.soonestTime}`);
                         break; // Found one with availability, use it
                     }
                 }
                 
-                // If no service had availability, use the first service for error message
+                // If no service had availability using new function, fall back to old function for error message
                 if (!availabilityResult) {
                     bestService = searchResult.services[0];
+                    console.log(`❌ No slots found with new function, trying fallback for ${bestService.name}`);
                     availabilityResult = await BookioDirectService.findSoonestSlot(bestService.serviceId, worker_id);
                 }
                 
-                if (availabilityResult.success && availabilityResult.found) {
+                // Handle both new and old function response formats
+                if (availabilityResult.success && (availabilityResult.soonestDate || availabilityResult.found)) {
                     response = `Služba: ${bestService.name}\n`;
                     response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
-                    response += `Najbližší voľný termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
                     
-                    if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
-                        response += `Ďalšie časy v ten deň: ${availabilityResult.allTimes.slice(1, 4).join(', ')}\n`;
+                    // Use new function format if available
+                    if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
+                        response += `Najbližší voľný termín: ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
+                        
+                        if (availabilityResult.availableTimes && availabilityResult.availableTimes.length > 1) {
+                            response += `Ďalšie časy v ten deň: ${availabilityResult.availableTimes.slice(1, 4).join(', ')}\n`;
+                        }
+                    } 
+                    // Fallback to old function format
+                    else if (availabilityResult.date && availabilityResult.time) {
+                        response += `Najbližší voľný termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
+                        
+                        if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
+                            response += `Ďalšie časy v ten deň: ${availabilityResult.allTimes.slice(1, 4).join(', ')}\n`;
+                        }
                     }
                     
                     response += `\nChcete si rezervovať tento termín?`;
