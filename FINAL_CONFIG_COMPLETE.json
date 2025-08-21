@@ -1,83 +1,28 @@
 {
   "type": "webhook",
-  "name": "refresh_test",
-  "description": "REFRESH clinic booking system with service discovery and availability",
-  "disable_interruptions": false,
-  "force_pre_tool_speech": "auto",
-  "assignments": [],
+  "name": "refresh_clinic",
+  "description": "REFRESH clinic booking assistant",
   "api_schema": {
     "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
     "method": "POST",
-    "path_params_schema": [],
-    "query_params_schema": [],
     "request_body_schema": {
-      "id": "body",
       "type": "object",
-      "description": "Complete booking parameters",
       "properties": [
         {
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Tool: get_services_overview | search_service | find_soonest_slot | check_specific_slot | get_booking_info | quick_service_lookup | get_opening_hours",
-          "dynamic_variable": "",
-          "constant_value": "",
+          "description": "Tool to use: search_service",
           "required": true
         },
         {
-          "id": "search_term",
+          "id": "search_term", 
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Service name to search for (e.g. hydrafacial, peeling, laminácia)",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": false
-        },
-        {
-          "id": "service_id",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Service ID from previous search results",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": false
-        },
-        {
-          "id": "worker_id",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Worker: -1 for any, 18204 for Janka, 30224 for Veronika",
-          "dynamic_variable": "",
-          "constant_value": "-1",
-          "required": false
-        },
-        {
-          "id": "date",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Date in DD.MM.YYYY or YYYY-MM-DD format",
-          "dynamic_variable": "",
-          "constant_value": "",
-          "required": false
-        },
-        {
-          "id": "time",
-          "type": "string",
-          "value_type": "llm_prompt",
-          "description": "Time in HH:MM format (e.g. 14:30)",
-          "dynamic_variable": "",
-          "constant_value": "",
+          "description": "Service name to search for",
           "required": false
         }
-      ],
-      "required": false,
-      "value_type": "llm_prompt"
-    },
-    "request_headers": [],
-    "auth_connection": null
-  },
-  "response_timeout_secs": 30,
-  "dynamic_variables": {
-    "dynamic_variable_placeholders": {}
+      ]
+    }
   }
 }
