@@ -39,6 +39,50 @@ router.get('/debug/services', async (req, res) => {
     }
 });
 
+// Get all available services organized by category
+router.get('/services', async (req, res) => {
+    try {
+        const services = await BookioDirectService.getServiceIndex();
+        
+        // Group services by category
+        const servicesByCategory = services.reduce((acc, service) => {
+            const categoryName = service.categoryName || 'Ostatné';
+            if (!acc[categoryName]) {
+                acc[categoryName] = [];
+            }
+            acc[categoryName].push({
+                id: service.serviceId,
+                title: service.title,
+                price: service.price,
+                duration: service.durationString,
+                description: service.description
+            });
+            return acc;
+        }, {});
+
+        // Sort services within each category by price
+        Object.keys(servicesByCategory).forEach(category => {
+            servicesByCategory[category].sort((a, b) => {
+                const priceA = parseFloat(a.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                const priceB = parseFloat(b.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                return priceA - priceB;
+            });
+        });
+
+        res.json({
+            success: true,
+            totalServices: services.length,
+            categories: Object.keys(servicesByCategory).sort(),
+            servicesByCategory
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 /**
  * GET /api/elevenlabs
  * Handle GET requests - return success for URL validation
