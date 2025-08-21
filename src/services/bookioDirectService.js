@@ -135,120 +135,73 @@ class BookioDirectService {
                 };
             }
 
-            // Search strategies (in order of priority)
+            // Search strategies (in order of priority) - PRECISE MATCHING
             let results = [];
             
             console.log(`🔍 Searching for: "${search}" among ${services.length} services`);
 
-            // 1. Exact title match
-            const exactMatch = services.filter(service => 
-                service.title.toLowerCase() === search
-            );
-            console.log(`📍 Exact matches: ${exactMatch.length}`);
-            
-            // 2. Smart Hydrafacial matching for Perk Lip variants (highest priority)
-            const smartHydrafacialMatch = services.filter(service => {
-                const title = service.title.toLowerCase();
-                const searchLower = search.toLowerCase();
+            // CRITICAL FIX: For "perk lip" searches, ONLY return actual PERK LIP services
+            if (search.includes('perk') && search.includes('lip')) {
+                const perkLipServices = services.filter(service => {
+                    const title = service.title.toLowerCase();
+                    return title.includes('perk lip') && !title.includes('j.lo') && !title.includes('jlo');
+                });
+                console.log(`💋 Found ${perkLipServices.length} PERK LIP services: ${perkLipServices.map(s => s.title).join(', ')}`);
                 
-                console.log(`🔍 Checking service: "${title}" against search: "${searchLower}"`);
+                if (perkLipServices.length > 0) {
+                    results = perkLipServices;
+                    console.log(`🎯 Using PERK LIP services only for "${search}"`);
+                }
+            }
+            
+            // If no perk lip specific search or no results, use general search
+            if (results.length === 0) {
+                console.log(`🔍 Running general search for: "${search}"`);
                 
-                // Handle "hydrafacial perk lip" - prioritize exact PERK LIP service
-                if ((searchLower.includes('hydrafacial') && searchLower.includes('perk') && searchLower.includes('lip')) ||
-                    (searchLower.includes('perk') && searchLower.includes('lip')) ||
-                    searchLower.includes('perklip')) {
-                    const match = title.includes('perk') && title.includes('lip');
-                    console.log(`💋 Service "${title}" matches perk lip criteria: ${match}`);
-                    return match;
-                }
-                return false;
-            });
-            console.log(`💋 Smart Hydrafacial Perk Lip matches: ${smartHydrafacialMatch.length}`);
-            
-            // 2b. Deprioritize J.Lo when Perk Lip is requested
-            const jLoMatches = services.filter(service => {
-                const title = service.title.toLowerCase();
-                const searchLower = search.toLowerCase();
-                // Only match J.Lo if NOT looking for perk lip
-                if (searchLower.includes('perk') || searchLower.includes('perklip')) {
-                    console.log(`🚫 Excluding J.Lo service "${title}" because searching for perk lip`);
-                    return false; // Don't return J.Lo when looking for Perk Lip
-                }
-                const match = title.includes('j.lo') || title.includes('jlo');
-                console.log(`🌟 Service "${title}" matches J.Lo criteria: ${match}`);
-                return match;
-            });
-            console.log(`🌟 J.Lo matches (only when not searching Perk Lip): ${jLoMatches.length}`);
-            
-            // 3. Exact phrase match (for multi-word searches)
-            const exactPhraseMatch = services.filter(service => 
-                service.title.toLowerCase().includes(search) && 
-                search.split(' ').length > 1 &&
-                search.split(' ').every(word => service.title.toLowerCase().includes(word))
-            );
-            console.log(`📝 Exact phrase matches: ${exactPhraseMatch.length}`);
-            
-            // 4. Title contains search term (but more restrictive)
-            const titleContains = services.filter(service => {
-                const title = service.title.toLowerCase();
-                // For multi-word searches, require higher match threshold
-                if (search.split(' ').length > 1) {
-                    const searchWords = search.split(' ');
-                    const matchedWords = searchWords.filter(word => title.includes(word));
-                    return matchedWords.length >= Math.ceil(searchWords.length * 0.7); // 70% of words must match
-                }
-                return title.includes(search);
-            });
-            console.log(`📊 Title contains matches: ${titleContains.length}`);
-
-            // 5. Search words in title (split search term)
-            const searchWords = search.split(' ').filter(word => word.length > 2);
-            const wordMatches = services.filter(service => {
-                const title = service.title.toLowerCase();
-                return searchWords.some(word => title.includes(word));
-            });
-            console.log(`🔤 Word matches: ${wordMatches.length}`);
-
-            // 4. Category context search
-            const categoryMatches = services.filter(service => 
-                service.categoryName.toLowerCase().includes(search)
-            );
-
-            // Combine and prioritize results (smart matching first, J.Lo only when appropriate)
-            results = [
-                ...exactMatch,
-                ...smartHydrafacialMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
-                ...exactPhraseMatch.filter(s => 
-                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId)
-                ),
-                ...titleContains.filter(s => 
-                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
-                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
-                ),
-                ...jLoMatches.filter(s => 
-                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
-                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
-                    !titleContains.find(t => t.serviceId === s.serviceId)
-                ),
-                ...wordMatches.filter(s => 
-                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
-                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
-                    !titleContains.find(t => t.serviceId === s.serviceId) &&
-                    !jLoMatches.find(j => j.serviceId === s.serviceId)
-                ),
-                ...categoryMatches.filter(s => 
-                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
-                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
-                    !titleContains.find(t => t.serviceId === s.serviceId) &&
-                    !jLoMatches.find(j => j.serviceId === s.serviceId) &&
-                    !wordMatches.find(w => w.serviceId === s.serviceId)
-                )
-            ];
+                // 1. Exact title match
+                const exactMatch = services.filter(service => 
+                    service.title.toLowerCase() === search
+                );
+                console.log(`📍 Exact matches: ${exactMatch.length}`);
+                
+                // 2. Exact phrase match (for multi-word searches)
+                const exactPhraseMatch = services.filter(service => 
+                    service.title.toLowerCase().includes(search) && 
+                    search.split(' ').length > 1 &&
+                    search.split(' ').every(word => service.title.toLowerCase().includes(word))
+                );
+                console.log(`📝 Exact phrase matches: ${exactPhraseMatch.length}`);
+                
+                // 3. Title contains search term
+                const titleContains = services.filter(service => {
+                    const title = service.title.toLowerCase();
+                    return title.includes(search);
+                });
+                console.log(`📊 Title contains matches: ${titleContains.length}`);
+                
+                // 4. Word matches (for hydrafacial searches)
+                const searchWords = search.split(' ').filter(word => word.length > 2);
+                const wordMatches = services.filter(service => {
+                    const title = service.title.toLowerCase();
+                    return searchWords.some(word => title.includes(word));
+                });
+                console.log(`🔤 Word matches: ${wordMatches.length}`);
+                
+                // Combine results with proper priority
+                results = [
+                    ...exactMatch,
+                    ...exactPhraseMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
+                    ...titleContains.filter(s => 
+                        !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                        !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
+                    ),
+                    ...wordMatches.filter(s => 
+                        !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                        !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
+                        !titleContains.find(t => t.serviceId === s.serviceId)
+                    )
+                ];
+            }
 
             // Remove duplicates by service name and price
             const uniqueResults = [];
@@ -279,14 +232,11 @@ class BookioDirectService {
             
             console.log(`🎯 Final search results for "${searchTerm}": ${results.map(r => r.title).join(', ')}`);
 
-            // Special handling for common requests
-            const finalResults = this.prioritizeCommonServices(results, searchTerm);
-
             return {
                 success: true,
-                found: finalResults.length,
+                found: results.length,
                 searchTerm: searchTerm,
-                services: finalResults.map(service => ({
+                services: results.map(service => ({
                     serviceId: service.serviceId,
                     name: service.title,
                     price: service.price,
@@ -296,9 +246,8 @@ class BookioDirectService {
                     priceNumber: service.priceNumber
                 }))
             };
-        }
 
-        catch (error) {
+        } catch (error) {
             console.error('Service search error:', error);
             return {
                 success: false,
@@ -306,28 +255,6 @@ class BookioDirectService {
                 searchTerm: searchTerm
             };
         }
-    }
-
-    /**
-     * Prioritize commonly requested services
-     */
-    prioritizeCommonServices(results, searchTerm) {
-        const search = searchTerm.toLowerCase();
-        
-        // For "perk lip" or "hydrafacial perk lip" - prioritize actual PERK LIP over J.Lo
-        if (search.includes('perk') && search.includes('lip')) {
-            const perkLipServices = results.filter(s => 
-                s.title.toLowerCase().includes('perk lip') && 
-                !s.title.toLowerCase().includes('j.lo')
-            );
-            const otherServices = results.filter(s => 
-                !s.title.toLowerCase().includes('perk lip') ||
-                s.title.toLowerCase().includes('j.lo')
-            );
-            return [...perkLipServices, ...otherServices];
-        }
-        
-        return results;
     }
 
     /**
