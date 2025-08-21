@@ -7,6 +7,15 @@ import BookioDirectService from '../services/bookioDirectService.js';
 const router = express.Router();
 
 /**
+ * GET /api/elevenlabs/test
+ * Test endpoint to verify ElevenLabs can reach our webhook
+ */
+router.get('/test', (req, res) => {
+    res.set('Content-Type', 'text/plain');
+    res.send('ElevenLabs webhook is reachable! Tools should work now.');
+});
+
+/**
  * POST /api/elevenlabs
  * Unified endpoint for all ElevenLabs tool calls
  * Handles dynamic routing based on tool_name parameter
@@ -21,9 +30,17 @@ router.post('/', async (req, res) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     
     try {
+        console.log('🚀 ElevenLabs webhook called:', {
+            method: req.method,
+            url: req.url,
+            headers: req.headers,
+            body: req.body
+        });
+
         const { tool_name, search_term, service_id, worker_id = -1, date, time } = req.body;
 
         if (!tool_name) {
+            console.log('❌ No tool_name provided');
             res.set('Content-Type', 'text/plain');
             return res.send("Nerozumiem požiadavke. Skúste to znovu.");
         }
