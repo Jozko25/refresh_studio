@@ -149,11 +149,17 @@ class BookioDirectService {
             // 2. Smart Hydrafacial matching for Perk Lip variants (highest priority)
             const smartHydrafacialMatch = services.filter(service => {
                 const title = service.title.toLowerCase();
+                const searchLower = search.toLowerCase();
+                
+                console.log(`🔍 Checking service: "${title}" against search: "${searchLower}"`);
+                
                 // Handle "hydrafacial perk lip" - prioritize exact PERK LIP service
-                if ((search.includes('hydrafacial') && search.includes('perk') && search.includes('lip')) ||
-                    (search.includes('perk') && search.includes('lip')) ||
-                    search.includes('perklip')) {
-                    return title.includes('perk') && title.includes('lip');
+                if ((searchLower.includes('hydrafacial') && searchLower.includes('perk') && searchLower.includes('lip')) ||
+                    (searchLower.includes('perk') && searchLower.includes('lip')) ||
+                    searchLower.includes('perklip')) {
+                    const match = title.includes('perk') && title.includes('lip');
+                    console.log(`💋 Service "${title}" matches perk lip criteria: ${match}`);
+                    return match;
                 }
                 return false;
             });
@@ -162,11 +168,15 @@ class BookioDirectService {
             // 2b. Deprioritize J.Lo when Perk Lip is requested
             const jLoMatches = services.filter(service => {
                 const title = service.title.toLowerCase();
+                const searchLower = search.toLowerCase();
                 // Only match J.Lo if NOT looking for perk lip
-                if (search.includes('perk') || search.includes('perklip')) {
+                if (searchLower.includes('perk') || searchLower.includes('perklip')) {
+                    console.log(`🚫 Excluding J.Lo service "${title}" because searching for perk lip`);
                     return false; // Don't return J.Lo when looking for Perk Lip
                 }
-                return title.includes('j.lo') || title.includes('jlo');
+                const match = title.includes('j.lo') || title.includes('jlo');
+                console.log(`🌟 Service "${title}" matches J.Lo criteria: ${match}`);
+                return match;
             });
             console.log(`🌟 J.Lo matches (only when not searching Perk Lip): ${jLoMatches.length}`);
             
