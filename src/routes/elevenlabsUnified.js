@@ -11,14 +11,20 @@ const router = express.Router();
  * Handles dynamic routing based on tool_name parameter
  */
 router.post('/', async (req, res) => {
+    // Set timeout to 25 seconds (ElevenLabs timeout is 30s)
+    req.setTimeout(25000);
+    
+    // Set CORS headers for ElevenLabs
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    
     try {
         const { tool_name, search_term, service_id, worker_id = -1, date, time } = req.body;
 
         if (!tool_name) {
-            return res.json({
-                success: false,
-                response: "Nerozumiem požiadavke. Skúste to znovu."
-            });
+            res.set('Content-Type', 'text/plain');
+            return res.send("Nerozumiem požiadavke. Skúste to znovu.");
         }
 
         console.log(`🔧 ElevenLabs tool call: ${tool_name}`, req.body);
@@ -42,10 +48,8 @@ router.post('/', async (req, res) => {
 
             case 'search_service':
                 if (!search_term) {
-                    return res.json({
-                        success: false,
-                        response: "Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?"
-                    });
+                        res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
                 }
                 
                 result = await CallFlowService.searchServices(search_term);
@@ -217,25 +221,18 @@ Pre rezervácie môžete volať alebo navštíviť našu webstránku.`;
                 break;
 
             default:
-                return res.json({
-                    success: false,
-                    response: `Neznámy nástroj: ${tool_name}. Dostupné nástroje: get_services_overview, search_service, find_soonest_slot, check_specific_slot, get_booking_info, quick_service_lookup, get_opening_hours`
-                });
+                res.set('Content-Type', 'text/plain');
+                return res.send(`Neznámy nástroj: ${tool_name}. Dostupné nástroje: get_services_overview, search_service, find_soonest_slot, check_specific_slot, get_booking_info, quick_service_lookup, get_opening_hours`);
         }
 
-        res.json({
-            success: result?.success !== false,
-            response: response,
-            data: result
-        });
+        // ElevenLabs expects plain text response
+        res.set('Content-Type', 'text/plain');
+        res.send(response);
 
     } catch (error) {
         console.error('ElevenLabs unified endpoint error:', error);
-        res.json({
-            success: false,
-            response: "Nastala chyba. Skúste to prosím znovu.",
-            error: error.message
-        });
+        res.set('Content-Type', 'text/plain');
+        res.send("Nastala chyba. Skúste to prosím znovu.");
     }
 });
 
