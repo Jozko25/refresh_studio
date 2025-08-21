@@ -2,6 +2,7 @@ import express from 'express';
 import CallFlowService from '../services/callFlowService.js';
 import SlotService from '../services/slotService.js';
 import WidgetFlowService from '../services/widgetFlowService.js';
+import BookioDirectService from '../services/bookioDirectService.js';
 
 const router = express.Router();
 
@@ -52,7 +53,7 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
                 }
                 
-                result = await CallFlowService.searchServices(search_term);
+                result = await BookioDirectService.searchServices(search_term);
                 if (result.success && result.found > 0) {
                     response = `Našla som ${result.found} ${result.found === 1 ? 'službu' : 'služieb'} pre "${search_term}":\n\n`;
                     result.services.slice(0, 3).forEach((service, index) => {
@@ -74,7 +75,7 @@ router.post('/', async (req, res) => {
                     });
                 }
 
-                result = await SlotService.findSoonestSlot(service_id, worker_id);
+                result = await BookioDirectService.findSoonestSlot(service_id, worker_id);
                 if (result.success && result.found) {
                     if (result.daysFromNow === 0) {
                         response = `Najrýchlejší dostupný termín je dnes o ${result.time}.`;
