@@ -98,11 +98,26 @@ router.post('/', async (req, res) => {
                     return res.send(`Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`);
                 }
                 
-                // Get the best matching service (first result)
-                const bestService = searchResult.services[0];
+                // Try to find availability for each service until we find one with slots
+                let availabilityResult = null;
+                let bestService = null;
                 
-                // Find availability for next 45 days
-                const availabilityResult = await BookioDirectService.findSoonestSlot(bestService.serviceId, worker_id);
+                for (const service of searchResult.services.slice(0, 3)) { // Try up to 3 services
+                    const result = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
+                    console.log(`🔍 Testing service ${service.serviceId} (${service.name}): ${result.found ? 'HAS SLOTS' : 'NO SLOTS'}`);
+                    
+                    if (result.success && result.found) {
+                        availabilityResult = result;
+                        bestService = service;
+                        break; // Found one with availability, use it
+                    }
+                }
+                
+                // If no service had availability, use the first service for error message
+                if (!availabilityResult) {
+                    bestService = searchResult.services[0];
+                    availabilityResult = await BookioDirectService.findSoonestSlot(bestService.serviceId, worker_id);
+                }
                 
                 if (availabilityResult.success && availabilityResult.found) {
                     response = `Služba: ${bestService.name}\n`;
@@ -117,7 +132,7 @@ router.post('/', async (req, res) => {
                 } else {
                     response = `Služba: ${bestService.name}\n`;
                     response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
-                    response += `Ľutujem, momentálne nie sú dostupné žiadne voľné termíny v najbližších 45 dňoch.`;
+                    response += `Momentálne nie sú dostupné online termíny. Môžete sa objednať telefonicky alebo navštíviť naše štúdio priamo.`;
                 }
                 break;
 

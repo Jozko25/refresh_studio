@@ -317,6 +317,286 @@ class BookioDirectService {
     }
 
     /**
+     * Get available times and days for a service, returning the soonest booking slot
+     * Handles multiple months, edge cases, retries, and comprehensive error handling
+     */
+    async getAvailableTimesAndDays(serviceId, workerId = -1, maxMonthsAhead = 3, maxRetries = 2) {
+        const startTime = Date.now();
+        let apiCallCount = 0;
+        
+        try {
+            console.log(`🔍 Getting available times and days for service ${serviceId}, worker ${workerId}`);
+            
+            // Validate inputs
+            if (!serviceId || serviceId <= 0) {
+                return { success: false, error: 'Invalid service ID provided' };
+            }
+
+            // Get workers if not specified with retry logic
+            if (workerId === -1) {
+                const workers = await this.retryApiCall(
+                    () => this.getWorkers(serviceId), 
+                    maxRetries, 
+                    `getWorkers(${serviceId})`
+                );
+                apiCallCount++;
+                
+                if (!workers || workers.length === 0) {
+                    return {
+                        success: false,
+                        message: 'Služba momentálne nie je dostupná - žiadni pracovníci',
+                        debugInfo: { serviceId, apiCallCount, duration: Date.now() - startTime }
+                    };
+                }
+                
+                // Use first available worker (excluding "Nezáleží" if others exist)
+                const realWorkers = workers.filter(w => w && w.workerId && w.workerId !== -1);
+                workerId = realWorkers.length > 0 ? realWorkers[0].workerId : workers[0]?.workerId;
+                
+                if (!workerId || workerId <= 0) {
+                    return { success: false, error: 'No valid worker ID found' };
+                }
+                
+                console.log(`👤 Selected worker ID: ${workerId} from ${workers.length} available workers`);
+            }
+
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+            const currentDay = now.getDate();
+
+            // Check multiple months ahead
+            for (let monthOffset = 0; monthOffset < maxMonthsAhead; monthOffset++) {
+                const targetDate = new Date(currentYear, currentMonth - 1 + monthOffset, 1);
+                const targetMonth = targetDate.getMonth() + 1;
+                const targetYear = targetDate.getFullYear();
+                
+                console.log(`📅 Checking month: ${targetMonth}/${targetYear} (offset: ${monthOffset})`);
+
+                try {
+                    // Get allowed days for this month with retry logic
+                    const allowedDaysData = await this.retryApiCall(
+                        () => this.getAllowedDaysForMonth(serviceId, workerId, targetYear, targetMonth),
+                        maxRetries,
+                        `getAllowedDays(${serviceId}, ${workerId}, ${targetYear}-${targetMonth})`
+                    );
+                    apiCallCount++;
+
+                    if (!this.isValidAllowedDaysResponse(allowedDaysData)) {
+                        console.log(`⚠️ Invalid or empty response for ${targetMonth}/${targetYear}`);
+                        continue;
+                    }
+
+                    // Filter out past dates for current month
+                    let validDays = allowedDaysData.allowedDays || [];
+                    if (monthOffset === 0) {
+                        validDays = validDays.filter(day => {
+                            const dayDate = new Date(targetYear, targetMonth - 1, day);
+                            return dayDate >= now;
+                        });
+                    }
+
+                    if (validDays.length === 0) {
+                        console.log(`📅 No valid days available in ${targetMonth}/${targetYear}`);
+                        continue;
+                    }
+
+                    // Sort days and check earliest available slots
+                    const sortedDays = validDays.sort((a, b) => a - b);
+                    console.log(`📋 Valid days in ${targetMonth}/${targetYear}: [${sortedDays.join(', ')}]`);
+
+                    for (const day of sortedDays) {
+                        const dateStr = this.formatDateString(day, targetMonth, targetYear);
+                        
+                        try {
+                            // Add small delay to prevent rate limiting
+                            if (apiCallCount > 3) {
+                                await this.sleep(100);
+                            }
+
+                            const timesData = await this.retryApiCall(
+                                () => this.getAllowedTimes(serviceId, workerId, dateStr),
+                                maxRetries,
+                                `getAllowedTimes(${serviceId}, ${workerId}, ${dateStr})`
+                            );
+                            apiCallCount++;
+
+                            if (this.hasValidTimeSlots(timesData)) {
+                                const earliestTime = timesData.times.all[0];
+                                const appointmentDate = new Date(targetYear, targetMonth - 1, day);
+                                const daysFromNow = Math.ceil((appointmentDate - now) / (1000 * 60 * 60 * 24));
+
+                                console.log(`✅ Found earliest slot: ${day}.${targetMonth}.${targetYear} at ${earliestTime.name}`);
+
+                                return {
+                                    success: true,
+                                    serviceId: parseInt(serviceId),
+                                    workerId: parseInt(workerId),
+                                    soonestDate: this.formatDisplayDate(day, targetMonth, targetYear),
+                                    soonestTime: earliestTime.name,
+                                    soonestDateTime: appointmentDate.toISOString(),
+                                    availableTimes: timesData.times.all.map(t => t.name),
+                                    totalAvailableSlots: timesData.times.all.length,
+                                    daysFromNow: Math.max(daysFromNow, 0),
+                                    year: targetYear,
+                                    month: targetMonth,
+                                    day: day,
+                                    availableDays: sortedDays,
+                                    monthsSearched: monthOffset + 1,
+                                    apiCallCount: apiCallCount,
+                                    searchDuration: Date.now() - startTime,
+                                    message: `Najrýchlejší dostupný termín: ${day}.${targetMonth}.${targetYear} o ${earliestTime.name} (za ${Math.max(daysFromNow, 0)} ${this.getDaysLabel(daysFromNow)})`
+                                };
+                            }
+                        } catch (error) {
+                            console.log(`❌ Error checking times for ${dateStr}: ${error.message}`);
+                            // Continue to next day instead of failing completely
+                            continue;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ Error checking month ${targetMonth}/${targetYear}: ${error.message}`);
+                    // Continue to next month instead of failing completely
+                    continue;
+                }
+            }
+
+            // No slots found after checking all months
+            console.log(`❌ No available slots found after checking ${maxMonthsAhead} months`);
+            return {
+                success: false,
+                found: false,
+                message: `Momentálne nie sú dostupné žiadne voľné termíny v najbližších ${maxMonthsAhead} mesiacoch`,
+                debugInfo: {
+                    serviceId: parseInt(serviceId),
+                    workerId: parseInt(workerId),
+                    monthsSearched: maxMonthsAhead,
+                    apiCallCount: apiCallCount,
+                    searchDuration: Date.now() - startTime
+                }
+            };
+
+        } catch (error) {
+            console.error('Critical error in getAvailableTimesAndDays:', error);
+            return {
+                success: false,
+                error: error.message,
+                debugInfo: {
+                    serviceId: parseInt(serviceId),
+                    workerId: workerId,
+                    apiCallCount: apiCallCount,
+                    searchDuration: Date.now() - startTime,
+                    errorStack: error.stack
+                }
+            };
+        }
+    }
+
+    /**
+     * Retry API calls with exponential backoff
+     */
+    async retryApiCall(apiFunction, maxRetries, operationName) {
+        let lastError;
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                const result = await apiFunction();
+                if (attempt > 0) {
+                    console.log(`✅ ${operationName} succeeded on attempt ${attempt + 1}`);
+                }
+                return result;
+            } catch (error) {
+                lastError = error;
+                
+                if (attempt < maxRetries) {
+                    const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
+                    console.log(`⚠️ ${operationName} failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${error.message}`);
+                    await this.sleep(delay);
+                } else {
+                    console.log(`❌ ${operationName} failed after ${maxRetries + 1} attempts: ${error.message}`);
+                }
+            }
+        }
+        
+        throw lastError;
+    }
+
+    /**
+     * Get allowed days for specific month/year
+     */
+    async getAllowedDaysForMonth(serviceId, workerId, year, month) {
+        // Create a date string for the first day of the target month
+        const dateStr = `01.${month.toString().padStart(2, '0')}.${year} 00:00`;
+        
+        const response = await axios.post(`${this.baseURL}/allowedDays`, {
+            serviceId: parseInt(serviceId),
+            workerId: parseInt(workerId),
+            date: dateStr,
+            addons: [],
+            count: 1,
+            participantsCount: 0,
+            lang: 'sk'
+        }, { headers: this.headers });
+
+        return response.data.data || {};
+    }
+
+    /**
+     * Validate allowed days API response
+     */
+    isValidAllowedDaysResponse(response) {
+        return response && 
+               response.allowedDays && 
+               Array.isArray(response.allowedDays) && 
+               response.allowedDays.length > 0 &&
+               response.year && 
+               response.month &&
+               !response.cantReserve;
+    }
+
+    /**
+     * Check if times response has valid slots
+     */
+    hasValidTimeSlots(timesData) {
+        return timesData && 
+               timesData.times && 
+               timesData.times.all && 
+               Array.isArray(timesData.times.all) && 
+               timesData.times.all.length > 0;
+    }
+
+    /**
+     * Format date string for API calls
+     */
+    formatDateString(day, month, year) {
+        return `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year} 00:00`;
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDisplayDate(day, month, year) {
+        return `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year}`;
+    }
+
+    /**
+     * Get proper Slovak label for days
+     */
+    getDaysLabel(days) {
+        if (days === 0) return 'dnes';
+        if (days === 1) return 'deň';
+        if (days >= 2 && days <= 4) return 'dni';
+        return 'dní';
+    }
+
+    /**
+     * Sleep utility for delays
+     */
+    async sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
      * Find soonest available slot for a service (checks up to 60 days ahead)
      */
     async findSoonestSlot(serviceId, workerId = -1) {
@@ -335,59 +615,64 @@ class BookioDirectService {
                 workerId = realWorkers.length > 0 ? realWorkers[0].workerId : workers[0].workerId;
             }
 
-            // Check multiple months ahead (current + next 3 months)
-            const currentDate = new Date();
-            const monthsToCheck = 4;
+            // Get allowed days (this gets current month by default)
+            const allowedDays = await this.getAllowedDays(serviceId, workerId);
             
-            for (let monthOffset = 0; monthOffset < monthsToCheck; monthOffset++) {
-                const checkDate = new Date(currentDate);
-                checkDate.setMonth(checkDate.getMonth() + monthOffset);
-                
-                // Get allowed days for this month
-                const allowedDays = await this.getAllowedDays(serviceId, workerId);
-                
-                if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
-                    continue; // Try next month
-                }
+            console.log('🔍 Debug - Allowed days response:', JSON.stringify(allowedDays, null, 2));
+            
+            if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
+                console.log('❌ No allowed days found');
+                return {
+                    success: false,
+                    found: false,
+                    message: 'Pre túto službu momentálne nie sú dostupné termíny'
+                };
+            }
 
-                // Check each allowed day in this month
-                for (const day of allowedDays.allowedDays) {
-                    const dateStr = `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year} 00:00`;
+            // Check each allowed day
+            for (const day of allowedDays.allowedDays) {
+                const dateStr = `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year} 00:00`;
+                
+                console.log(`🔍 Debug - Checking date: ${dateStr}`);
+                
+                try {
+                    const times = await this.getAllowedTimes(serviceId, workerId, dateStr);
                     
-                    try {
-                        const times = await this.getAllowedTimes(serviceId, workerId, dateStr);
+                    console.log(`🔍 Debug - Times for ${dateStr}:`, times.times?.all?.length || 0, 'slots');
+                    
+                    if (times.times && times.times.all && times.times.all.length > 0) {
+                        const firstTime = times.times.all[0];
                         
-                        if (times.times && times.times.all && times.times.all.length > 0) {
-                            const firstTime = times.times.all[0];
-                            
-                            // Calculate days from now
-                            const appointmentDate = new Date(allowedDays.year, allowedDays.month - 1, day);
-                            const today = new Date();
-                            const daysFromNow = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
-                            
-                            return {
-                                success: true,
-                                found: true,
-                                date: `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year}`,
-                                time: firstTime.name,
-                                workerId: workerId,
-                                totalSlots: times.times.all.length,
-                                allTimes: times.times.all.slice(0, 5).map(t => t.name),
-                                daysFromNow: daysFromNow,
-                                message: `Najrýchlejší dostupný termín je ${day}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name} (o ${daysFromNow} dní)`
-                            };
-                        }
-                    } catch (error) {
-                        // Skip this day and continue
-                        continue;
+                        // Calculate days from now
+                        const appointmentDate = new Date(allowedDays.year, allowedDays.month - 1, day);
+                        const today = new Date();
+                        const daysFromNow = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        console.log(`✅ Found appointment: ${day}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name}`);
+                        
+                        return {
+                            success: true,
+                            found: true,
+                            date: `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year}`,
+                            time: firstTime.name,
+                            workerId: workerId,
+                            totalSlots: times.times.all.length,
+                            allTimes: times.times.all.slice(0, 5).map(t => t.name),
+                            daysFromNow: daysFromNow,
+                            message: `Najrýchlejší dostupný termín je ${day}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name}`
+                        };
                     }
+                } catch (error) {
+                    console.log(`❌ Error checking ${dateStr}:`, error.message);
+                    continue;
                 }
             }
 
+            console.log('❌ No available slots found in any allowed days');
             return {
                 success: false,
                 found: false,
-                message: 'Momentálne nie sú dostupné žiadne voľné termíny v najbližších 4 mesiacoch'
+                message: 'Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch'
             };
 
         } catch (error) {
