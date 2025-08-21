@@ -16,6 +16,39 @@ router.get('/test', (req, res) => {
 });
 
 /**
+ * GET /api/elevenlabs
+ * Handle GET requests - return success for URL validation
+ */
+router.get('/', (req, res) => {
+    res.set('Content-Type', 'application/json');
+    res.json({
+        success: true,
+        message: "REFRESH clinic webhook is ready",
+        available_tools: ["search_service", "find_soonest_slot", "get_services_overview", "get_opening_hours"]
+    });
+});
+
+/**
+ * OPTIONS /api/elevenlabs
+ * Handle preflight requests from ElevenLabs
+ */
+router.options('/', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS, HEAD');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, ElevenLabs-Signature');
+    res.status(200).send();
+});
+
+/**
+ * HEAD /api/elevenlabs
+ * Handle HEAD requests for URL validation
+ */
+router.head('/', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.status(200).send();
+});
+
+/**
  * POST /api/elevenlabs
  * Unified endpoint for all ElevenLabs tool calls
  * Handles dynamic routing based on tool_name parameter
