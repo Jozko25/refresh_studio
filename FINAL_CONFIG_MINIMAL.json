@@ -1,0 +1,56 @@
+{
+  "type": "webhook",
+  "name": "refresh_booking",
+  "description": "REFRESH clinic booking",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Tool parameters",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Tool function name",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "search_term",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service name",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "service_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service ID",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}

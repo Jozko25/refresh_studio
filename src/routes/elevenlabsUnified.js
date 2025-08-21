@@ -105,13 +105,37 @@ router.post('/', async (req, res) => {
                 
                 result = await BookioDirectService.searchServices(search_term);
                 if (result.success && result.found > 0) {
-                    response = `Našla som ${result.found} ${result.found === 1 ? 'službu' : 'služieb'} pre "${search_term}":\n\n`;
-                    result.services.slice(0, 3).forEach((service, index) => {
-                        response += `${index + 1}. ${service.name}\n`;
-                        response += `   Cena: ${service.price}, Trvanie: ${service.duration}\n`;
-                        response += `   ID služby: ${service.serviceId}\n\n`;
-                    });
-                    response += "Ktorá služba vás zaujíma? Môžem vám nájsť voľné termíny.";
+                    if (result.found === 1) {
+                        // Only one service found - provide details and ask if they want appointment
+                        const service = result.services[0];
+                        response = `Našla som službu: ${service.name}\n`;
+                        response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                        response += `Chcete si rezervovať termín pre túto službu?`;
+                        // Store service ID for next call
+                        response += `\n[SERVICE_ID:${service.serviceId}]`;
+                    } else {
+                        // Multiple services - automatically pick first one if they're identical
+                        const firstService = result.services[0];
+                        const allIdentical = result.services.every(s => 
+                            s.name === firstService.name && s.price === firstService.price
+                        );
+                        
+                        if (allIdentical) {
+                            // All services are identical - pick first one
+                            response = `Našla som službu: ${firstService.name}\n`;
+                            response += `Cena: ${firstService.price}, Trvanie: ${firstService.duration}\n\n`;
+                            response += `Chcete si rezervovať termín pre túto službu?`;
+                            response += `\n[SERVICE_ID:${firstService.serviceId}]`;
+                        } else {
+                            // Actually different services - let user choose
+                            response = `Našla som ${result.found} služieb pre "${search_term}":\n\n`;
+                            result.services.slice(0, 3).forEach((service, index) => {
+                                response += `${index + 1}. ${service.name}\n`;
+                                response += `   Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                            });
+                            response += "Ktorú službu si želáte? Povedzite číslo alebo názov.";
+                        }
+                    }
                 } else {
                     response = `Ľutujem, nenašla som službu "${search_term}". Skúste iný názov alebo sa spýtajte na naše hlavné služby.`;
                 }
@@ -119,10 +143,8 @@ router.post('/', async (req, res) => {
 
             case 'find_soonest_slot':
                 if (!service_id) {
-                    return res.json({
-                        success: false,
-                        response: "Potrebujem vedieť ID služby. Najskôr vyhľadajte službu."
-                    });
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Najskôr musím nájsť službu. Akú službu si želáte?");
                 }
 
                 result = await BookioDirectService.findSoonestSlot(service_id, worker_id);
@@ -249,6 +271,38 @@ router.post('/', async (req, res) => {
                     }
                 } else {
                     response = `Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`;
+                }
+                break;
+
+            case 'check_date':
+                if (!service_id || !search_term) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Potrebujem vedieť službu a dátum na kontrolu.");
+                }
+
+                // Use search_term as date for check_date tool
+                const checkDate = search_term;
+                result = await SlotService.checkSlot(service_id, worker_id, checkDate, time);
+                if (result.success) {
+                    if (result.available) {
+                        response = `Výborné! Na ${checkDate} je dostupný termín.`;
+                        response += "\n\nChcete si tento termín rezervovať?";
+                    } else {
+                        response = `Ľutujem, na ${checkDate} nie sú dostupné žiadne termíny.`;
+                        
+                        if (result.closestTimes && result.closestTimes.length > 0) {
+                            response += ` Na tento deň sú dostupné tieto časy: ${result.closestTimes.join(', ')}.`;
+                            response += "\n\nKtorý z týchto časov by vám vyhovoval?";
+                        } else if (result.totalSlots > 0) {
+                            response += ` Na tento deň je dostupných ${result.totalSlots} iných termínov.`;
+                            response += "\n\nChcete počuť dostupné časy?";
+                        } else {
+                            response += " Na tento deň nie sú dostupné žiadne termíny.";
+                            response += "\n\nSkúste iný dátum alebo sa spýtajte na najrýchlejší dostupný termín.";
+                        }
+                    }
+                } else {
+                    response = "Nastala chyba pri kontrole termínu. Skúste to prosím znovu.";
                 }
                 break;
 

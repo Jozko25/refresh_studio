@@ -1,6 +1,6 @@
 {
   "type": "webhook", 
-  "name": "refresh_test",
+  "name": "refresh_booking",
   "description": "REFRESH clinic booking system",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
@@ -13,13 +13,13 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "REQUIRED: Tool execution parameters. The assistant MUST call this webhook for every user query about services, times, or bookings. Do not just talk about calling tools - actually send HTTP POST request.",
+      "description": "Tool execution parameters",
       "properties": [
         {
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "REQUIRED: The specific tool function to call. Use EXACTLY one of these values: \"search_service\" (when customer asks about a specific service or treatment), \"find_soonest_slot\" (when customer wants to book after service is found), \"get_services_overview\" (when customer asks what services are available), \"get_opening_hours\" (when customer asks about hours/location). WORKFLOW: Always use search_service FIRST before find_soonest_slot.",
+          "description": "Tool function: search_service, find_soonest_slot, get_services_overview, get_opening_hours",
           "dynamic_variable": "",
           "constant_value": "",
           "required": true
@@ -28,7 +28,7 @@
           "id": "search_term",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "REQUIRED for search_service tool: Extract the exact service name the customer is asking about. Examples: \"hydrafacial\", \"laserová epilácia\", \"peeling\", \"laminácia obočia\", \"odstránenie tetovania\". Use the customer's exact words when possible. Leave empty for other tools.",
+          "description": "Service name to search for (required for search_service)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -37,7 +37,7 @@
           "id": "service_id",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "REQUIRED for find_soonest_slot tool: Use the exact serviceId number returned from search_service tool results. Example: \"25890\". NEVER guess this value - it must come from a previous search_service call. Leave empty for other tools.",
+          "description": "Service ID from search results (required for find_soonest_slot)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -46,7 +46,7 @@
           "id": "worker_id",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Worker: -1 for any, 18204 for Janka, 30224 for Veronika",
+          "description": "Worker ID: -1 for any, 18204 for Janka, 30224 for Veronika",
           "dynamic_variable": "",
           "constant_value": "-1",
           "required": false

@@ -175,6 +175,20 @@ class BookioDirectService {
                 )
             ];
 
+            // Remove duplicates by service name and price
+            const uniqueResults = [];
+            const seen = new Set();
+            
+            for (const service of results) {
+                const key = `${service.title}-${service.priceNumber}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueResults.push(service);
+                }
+            }
+            
+            results = uniqueResults;
+
             // Sort by priority and price
             results.sort((a, b) => {
                 // First by priority (lower number = higher priority)
