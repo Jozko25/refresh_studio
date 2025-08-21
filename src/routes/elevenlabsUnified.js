@@ -84,6 +84,43 @@ router.post('/', async (req, res) => {
         let response;
 
         switch (tool_name) {
+            case 'quick_booking':
+                if (!search_term) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte.");
+                }
+                
+                // First search for the service
+                const searchResult = await BookioDirectService.searchServices(search_term);
+                
+                if (!searchResult.success || searchResult.found === 0) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`);
+                }
+                
+                // Get the best matching service (first result)
+                const bestService = searchResult.services[0];
+                
+                // Find availability for next 45 days
+                const availabilityResult = await BookioDirectService.findSoonestSlot(bestService.serviceId, worker_id);
+                
+                if (availabilityResult.success && availabilityResult.found) {
+                    response = `Služba: ${bestService.name}\n`;
+                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
+                    response += `Najbližší voľný termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
+                    
+                    if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
+                        response += `Ďalšie časy v ten deň: ${availabilityResult.allTimes.slice(1, 4).join(', ')}\n`;
+                    }
+                    
+                    response += `\nChcete si rezervovať tento termín?`;
+                } else {
+                    response = `Služba: ${bestService.name}\n`;
+                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
+                    response += `Ľutujem, momentálne nie sú dostupné žiadne voľné termíny v najbližších 45 dňoch.`;
+                }
+                break;
+
             case 'get_services_overview':
                 result = await CallFlowService.getServiceOverview();
                 if (result.success && result.overview) {

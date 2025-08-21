@@ -143,10 +143,24 @@ class BookioDirectService {
                 service.title.toLowerCase() === search
             );
             
-            // 2. Title contains search term
-            const titleContains = services.filter(service => 
-                service.title.toLowerCase().includes(search)
+            // 2. Exact phrase match (for multi-word searches)
+            const exactPhraseMatch = services.filter(service => 
+                service.title.toLowerCase().includes(search) && 
+                search.split(' ').length > 1 &&
+                search.split(' ').every(word => service.title.toLowerCase().includes(word))
             );
+            
+            // 3. Title contains search term (but more restrictive)
+            const titleContains = services.filter(service => {
+                const title = service.title.toLowerCase();
+                // For multi-word searches, require higher match threshold
+                if (search.split(' ').length > 1) {
+                    const searchWords = search.split(' ');
+                    const matchedWords = searchWords.filter(word => title.includes(word));
+                    return matchedWords.length >= Math.ceil(searchWords.length * 0.7); // 70% of words must match
+                }
+                return title.includes(search);
+            });
 
             // 3. Search words in title (split search term)
             const searchWords = search.split(' ').filter(word => word.length > 2);
@@ -163,13 +177,19 @@ class BookioDirectService {
             // Combine and prioritize results
             results = [
                 ...exactMatch,
-                ...titleContains.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
+                ...exactPhraseMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
+                ...titleContains.filter(s => 
+                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
+                ),
                 ...wordMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId)
                 ),
                 ...categoryMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId) &&
                     !wordMatches.find(w => w.serviceId === s.serviceId)
                 )
@@ -297,7 +317,7 @@ class BookioDirectService {
     }
 
     /**
-     * Find soonest available slot for a service
+     * Find soonest available slot for a service (checks up to 60 days ahead)
      */
     async findSoonestSlot(serviceId, workerId = -1) {
         try {
@@ -315,38 +335,59 @@ class BookioDirectService {
                 workerId = realWorkers.length > 0 ? realWorkers[0].workerId : workers[0].workerId;
             }
 
-            // Get allowed days
-            const allowedDays = await this.getAllowedDays(serviceId, workerId);
+            // Check multiple months ahead (current + next 3 months)
+            const currentDate = new Date();
+            const monthsToCheck = 4;
             
-            if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
-                return {
-                    success: false,
-                    message: 'Pre túto službu momentálne nie sú dostupné termíny'
-                };
-            }
+            for (let monthOffset = 0; monthOffset < monthsToCheck; monthOffset++) {
+                const checkDate = new Date(currentDate);
+                checkDate.setMonth(checkDate.getMonth() + monthOffset);
+                
+                // Get allowed days for this month
+                const allowedDays = await this.getAllowedDays(serviceId, workerId);
+                
+                if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
+                    continue; // Try next month
+                }
 
-            // Check first available day
-            const firstDay = allowedDays.allowedDays[0];
-            const date = `${firstDay}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year} 00:00`;
-            
-            const times = await this.getAllowedTimes(serviceId, workerId, date);
-            
-            if (times.times && times.times.all && times.times.all.length > 0) {
-                const firstTime = times.times.all[0];
-                return {
-                    success: true,
-                    date: `${firstDay}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year}`,
-                    time: firstTime.name,
-                    workerId: workerId,
-                    totalSlots: times.times.all.length,
-                    allTimes: times.times.all.slice(0, 5).map(t => t.name),
-                    message: `Najrýchlejší dostupný termín je ${firstDay}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name}`
-                };
+                // Check each allowed day in this month
+                for (const day of allowedDays.allowedDays) {
+                    const dateStr = `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year} 00:00`;
+                    
+                    try {
+                        const times = await this.getAllowedTimes(serviceId, workerId, dateStr);
+                        
+                        if (times.times && times.times.all && times.times.all.length > 0) {
+                            const firstTime = times.times.all[0];
+                            
+                            // Calculate days from now
+                            const appointmentDate = new Date(allowedDays.year, allowedDays.month - 1, day);
+                            const today = new Date();
+                            const daysFromNow = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
+                            
+                            return {
+                                success: true,
+                                found: true,
+                                date: `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year}`,
+                                time: firstTime.name,
+                                workerId: workerId,
+                                totalSlots: times.times.all.length,
+                                allTimes: times.times.all.slice(0, 5).map(t => t.name),
+                                daysFromNow: daysFromNow,
+                                message: `Najrýchlejší dostupný termín je ${day}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name} (o ${daysFromNow} dní)`
+                            };
+                        }
+                    } catch (error) {
+                        // Skip this day and continue
+                        continue;
+                    }
+                }
             }
 
             return {
                 success: false,
-                message: 'Momentálne nie sú dostupné žiadne voľné termíny'
+                found: false,
+                message: 'Momentálne nie sú dostupné žiadne voľné termíny v najbližších 4 mesiacoch'
             };
 
         } catch (error) {
