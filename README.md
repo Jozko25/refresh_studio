@@ -221,9 +221,57 @@ src/
 
 ### Testing
 
-```bash
-npm test
+This project includes comprehensive test coverage with multiple test suites:
+
+#### Test Structure
 ```
+tests/
+├── services/           # Unit tests for service classes
+├── routes/            # Integration tests for API endpoints  
+├── middleware/        # Middleware functionality tests
+├── integration/       # Full application integration tests
+├── edge-cases/        # Edge cases and error handling tests
+├── fixtures/          # Test data and mock responses
+└── setup.js          # Test configuration
+```
+
+#### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run with coverage report  
+npm run test:coverage
+
+# Run specific test suites
+npm run test:unit           # Unit tests only
+npm run test:integration    # API endpoint tests
+npm run test:edge          # Edge cases and error handling
+
+# Watch mode for development
+npm run test:watch
+
+# CI mode (coverage required)
+npm run test:ci
+
+# Manual API testing
+chmod +x test-curl-commands.sh
+./test-curl-commands.sh
+```
+
+#### Test Coverage
+- **Branches**: 80% minimum
+- **Functions**: 80% minimum  
+- **Lines**: 80% minimum
+- **Statements**: 80% minimum
+
+#### Key Test Features
+- ✅ **Comprehensive Mocking** - External API calls mocked
+- ✅ **Edge Case Coverage** - Invalid inputs, errors, timeouts
+- ✅ **Slovak Language** - ElevenLabs webhook Slovak responses
+- ✅ **Concurrent Testing** - Race condition simulation
+- ✅ **Error Boundaries** - Graceful failure handling
+- ✅ **Security Testing** - Input validation, XSS prevention
 
 ### Contributing
 

@@ -1,0 +1,21 @@
+{
+  "type": "webhook",
+  "name": "refresh_test",
+  "description": "Test webhook",
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "request_body_schema": {
+      "type": "object",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Tool name",
+          "required": true
+        }
+      ]
+    }
+  }
+}

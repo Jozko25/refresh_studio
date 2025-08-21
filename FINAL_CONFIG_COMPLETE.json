@@ -1,7 +1,7 @@
 {
   "type": "webhook",
-  "name": "refresh_clinic_booking",
-  "description": "Complete REFRESH clinic booking system with service discovery and real-time availability",
+  "name": "refresh_test",
+  "description": "REFRESH clinic booking system with service discovery and availability",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
   "assignments": [],
@@ -13,13 +13,13 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "REFRESH clinic booking and service request",
+      "description": "Complete booking parameters",
       "properties": [
         {
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Tool function: get_services_overview | search_service | find_soonest_slot | check_specific_slot | get_booking_info | quick_service_lookup | get_opening_hours",
+          "description": "Tool: get_services_overview | search_service | find_soonest_slot | check_specific_slot | get_booking_info | quick_service_lookup | get_opening_hours",
           "dynamic_variable": "",
           "constant_value": "",
           "required": true
@@ -28,7 +28,7 @@
           "id": "search_term",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Service name to search for (e.g. 'hydrafacial', 'peeling', 'laminácia obočia')",
+          "description": "Service name to search for (e.g. hydrafacial, peeling, laminácia)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -46,7 +46,7 @@
           "id": "worker_id",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Worker ID: -1 for any worker, 18204 for Janka, 30224 for Veronika",
+          "description": "Worker: -1 for any, 18204 for Janka, 30224 for Veronika",
           "dynamic_variable": "",
           "constant_value": "-1",
           "required": false
@@ -55,7 +55,7 @@
           "id": "date",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Date in YYYY-MM-DD format or DD.MM.YYYY format",
+          "description": "Date in DD.MM.YYYY or YYYY-MM-DD format",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
@@ -64,7 +64,7 @@
           "id": "time",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Time in HH:MM format (e.g. '14:30')",
+          "description": "Time in HH:MM format (e.g. 14:30)",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false

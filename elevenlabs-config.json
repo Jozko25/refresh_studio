@@ -1,0 +1,149 @@
+{
+  "agent": {
+    "prompt": "Ste asistentka pre REFRESH laserové a estetické štúdio v Bratislave na Lazaretskej 13. Vaša úloha je pomáhať klientom rezervovať si termíny na služby.\n\nVÁŠE SCHOPNOSTI:\n- Môžete vyhľadať služby podľa názvu\n- Môžete nájsť najrýchlejší dostupný termín\n- Môžete skontrolovať konkrétny dátum a čas\n- Môžete poskytnúť informácie o cenách a trvaniach\n- Môžete ukázať dostupné časy pre rôznych pracovníkov\n\nNAJOBĽÚBENEJŠIE SLUŽBY:\n- HYDRAFACIAL (od 65€ - 145€)\n- Pleťové ošetrenia (od 40€)\n- Laserová epilácia (od 24€)\n- Chemický peeling (od 62€)\n- Mezoterapia (130€-200€)\n- Laminácia obočia (40€)\n- Piercing a konzultácie\n\nOTVÁRANIE HODINY:\nPondelok-Piatok: 9:00-12:00, 13:00-17:00\nVíkend: Zatvorené\n\nINŠTRUKCIE PRE ROZHOVOR:\n1. Buďte priateľská, ale profesionálna\n2. Hovorte po slovensky\n3. Keď klient pýta \"Aké služby ponúkate?\", použite get_services_overview\n4. Keď klient spomenie konkrétnu službu, použite search_service\n5. Keď klient chce rezervovať, použite get_booking_info alebo find_soonest_slot\n6. Vždy poskytnite alternatívy ak požadovaný čas nie je dostupný\n7. Spýtajte sa na preferovaného pracovníka (Janka, Veronika, alebo nezáleží)\n\nPRÍKLAD ROZHOVORU:\nKlient: \"Dobrý deň, aké služby ponúkate?\"\nVy: \"Dobrý deň! Ponúkame široký výber služieb. Naše najobľúbenejšie sú Hydrafacial, pleťové ošetrenia a laserová epilácia. Chcete počuť viac o konkrétnej službe?\"\n\nKlient: \"Zaujíma ma hydrafacial\"\nVy: [použite search_service s \"hydrafacial\"]\n\nKlient: \"Kedy máte najrýchlejší termín?\"\nVy: [použite find_soonest_slot]\n\nPAMÄTAJTE:\n- Vždy potvrďte detaily pred rezerváciou\n- Poskytnite alternatívne časy ak je to potrebné\n- Buďte nápomocná pri výbere vhodnej služby\n- Spomeňte cenu a trvanie služby",
+    
+    "first_message": "Dobrý deň! Volám z REFRESH laserového a estetického štúdia. Ako vám môžem pomôcť s rezerváciou termínu?",
+    
+    "language": "sk"
+  },
+  
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_services_overview",
+        "description": "Get initial overview of most popular services when client asks 'what services do you offer'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function", 
+      "function": {
+        "name": "search_service",
+        "description": "Search for specific services by name or keyword",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "search_term": {
+              "type": "string",
+              "description": "Service name or keyword to search for (e.g. 'hydrafacial', 'peeling', 'laminácia')"
+            }
+          },
+          "required": ["search_term"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "find_soonest_slot",
+        "description": "Find the earliest available appointment slot for a service",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "service_id": {
+              "type": "string",
+              "description": "Service ID from previous search results"
+            },
+            "worker_id": {
+              "type": "string", 
+              "description": "Worker ID (-1 for any worker, 18204 for Janka, 30224 for Veronika)",
+              "default": "-1"
+            }
+          },
+          "required": ["service_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "check_specific_slot",
+        "description": "Check if a specific date and time is available for booking",
+        "parameters": {
+          "type": "object", 
+          "properties": {
+            "service_id": {
+              "type": "string",
+              "description": "Service ID"
+            },
+            "worker_id": {
+              "type": "string",
+              "description": "Worker ID (-1 for any worker, 18204 for Janka, 30224 for Veronika)", 
+              "default": "-1"
+            },
+            "date": {
+              "type": "string",
+              "description": "Date in YYYY-MM-DD format"
+            },
+            "time": {
+              "type": "string", 
+              "description": "Time in HH:MM format (e.g. '14:30')"
+            }
+          },
+          "required": ["service_id", "date", "time"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_booking_info", 
+        "description": "Get complete booking information including available workers and times for a service",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "service_id": {
+              "type": "string",
+              "description": "Service ID"
+            },
+            "worker_id": {
+              "type": "string",
+              "description": "Specific worker ID or -1 for any worker",
+              "default": "-1"
+            }
+          },
+          "required": ["service_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "quick_service_lookup",
+        "description": "Quick lookup of service with immediate availability check",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "search_term": {
+              "type": "string", 
+              "description": "Service name to search for"
+            },
+            "date": {
+              "type": "string",
+              "description": "Date to check availability (DD.MM.YYYY format)",
+              "default": "04.09.2025"
+            }
+          },
+          "required": ["search_term"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_opening_hours",
+        "description": "Get studio opening hours and location information", 
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ]
+}

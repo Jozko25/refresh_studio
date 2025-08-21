@@ -5,6 +5,12 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import bookingRoutes from './routes/booking.js';
+import refreshClinicRoutes from './routes/refreshClinic.js';
+import slotsRoutes from './routes/slots.js';
+import callFlowRoutes from './routes/callFlow.js';
+import widgetFlowRoutes from './routes/widgetFlow.js';
+import elevenlabsRoutes from './routes/elevenlabs.js';
+import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -39,6 +45,11 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/booking', bookingRoutes);
+app.use('/api/refresh-clinic', refreshClinicRoutes);
+app.use('/api/slots', slotsRoutes);
+app.use('/api/call', callFlowRoutes);
+app.use('/api/widget', widgetFlowRoutes);
+app.use('/api/elevenlabs', elevenlabsUnifiedRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -55,7 +66,13 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`🚀 Bookio Webhook API server running on port ${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Facility ID: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
+  console.log(`🔗 Original Facility: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
+  console.log(`🏥 REFRESH Clinic: refresh-laserove-a-esteticke-studio-zu0yxr5l`);
+  console.log(`✨ REFRESH API: http://localhost:${PORT}/api/refresh-clinic/services`);
+  console.log(`🎯 Slots API: http://localhost:${PORT}/api/slots/soonest/[serviceId]`);
+  console.log(`📞 Call Flow: http://localhost:${PORT}/api/call/services-overview`);
+  console.log(`🎨 Widget Flow: http://localhost:${PORT}/api/widget/quick-lookup/[search]`);
+  console.log(`🤖 ElevenLabs: http://localhost:${PORT}/api/elevenlabs/[tool_name]`);
 });
 
 export default app;
