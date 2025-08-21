@@ -15,6 +15,30 @@ router.get('/test', (req, res) => {
     res.send('ElevenLabs webhook is reachable! Tools should work now.');
 });
 
+// Debug endpoint to see all services
+router.get('/debug/services', async (req, res) => {
+    try {
+        const services = await BookioDirectService.getServiceIndex();
+        const hydrafacialServices = services.filter(s => 
+            s.title.toLowerCase().includes('hydrafacial') || 
+            s.title.toLowerCase().includes('perk') ||
+            s.title.toLowerCase().includes('lip')
+        );
+        
+        res.json({
+            totalServices: services.length,
+            hydrafacialServices: hydrafacialServices.map(s => ({
+                id: s.serviceId,
+                title: s.title,
+                price: s.price,
+                category: s.categoryName
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 /**
  * GET /api/elevenlabs
  * Handle GET requests - return success for URL validation

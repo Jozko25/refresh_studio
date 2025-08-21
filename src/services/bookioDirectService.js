@@ -137,20 +137,39 @@ class BookioDirectService {
 
             // Search strategies (in order of priority)
             let results = [];
+            
+            console.log(`🔍 Searching for: "${search}" among ${services.length} services`);
 
             // 1. Exact title match
             const exactMatch = services.filter(service => 
                 service.title.toLowerCase() === search
             );
+            console.log(`📍 Exact matches: ${exactMatch.length}`);
             
-            // 2. Exact phrase match (for multi-word searches)
+            // 2. Smart Hydrafacial matching for Perk Lip variants
+            const smartHydrafacialMatch = services.filter(service => {
+                const title = service.title.toLowerCase();
+                // Handle "perk lip" variations
+                if (search.includes('perk') && search.includes('lip')) {
+                    return title.includes('perk') && title.includes('lip');
+                }
+                // Handle "perklip" as one word
+                if (search.includes('perklip')) {
+                    return title.includes('perk') && title.includes('lip');
+                }
+                return false;
+            });
+            console.log(`💋 Smart Hydrafacial Perk Lip matches: ${smartHydrafacialMatch.length}`);
+            
+            // 3. Exact phrase match (for multi-word searches)
             const exactPhraseMatch = services.filter(service => 
                 service.title.toLowerCase().includes(search) && 
                 search.split(' ').length > 1 &&
                 search.split(' ').every(word => service.title.toLowerCase().includes(word))
             );
+            console.log(`📝 Exact phrase matches: ${exactPhraseMatch.length}`);
             
-            // 3. Title contains search term (but more restrictive)
+            // 4. Title contains search term (but more restrictive)
             const titleContains = services.filter(service => {
                 const title = service.title.toLowerCase();
                 // For multi-word searches, require higher match threshold
@@ -161,34 +180,43 @@ class BookioDirectService {
                 }
                 return title.includes(search);
             });
+            console.log(`📊 Title contains matches: ${titleContains.length}`);
 
-            // 3. Search words in title (split search term)
+            // 5. Search words in title (split search term)
             const searchWords = search.split(' ').filter(word => word.length > 2);
             const wordMatches = services.filter(service => {
                 const title = service.title.toLowerCase();
                 return searchWords.some(word => title.includes(word));
             });
+            console.log(`🔤 Word matches: ${wordMatches.length}`);
 
             // 4. Category context search
             const categoryMatches = services.filter(service => 
                 service.categoryName.toLowerCase().includes(search)
             );
 
-            // Combine and prioritize results
+            // Combine and prioritize results (smart matching first)
             results = [
                 ...exactMatch,
-                ...exactPhraseMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
+                ...smartHydrafacialMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
+                ...exactPhraseMatch.filter(s => 
+                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId)
+                ),
                 ...titleContains.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
                 ),
                 ...wordMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId)
                 ),
                 ...categoryMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId) &&
                     !wordMatches.find(w => w.serviceId === s.serviceId)
@@ -221,6 +249,8 @@ class BookioDirectService {
 
             // Limit results to top 10
             results = results.slice(0, 10);
+            
+            console.log(`🎯 Final search results for "${searchTerm}": ${results.map(r => r.title).join(', ')}`);
 
             return {
                 success: true,
