@@ -121,7 +121,7 @@ class BookioDirectService {
     }
 
     /**
-     * Search services with exact matching
+     * Search services with exact matching - improved for better client experience
      */
     async searchServices(searchTerm) {
         try {
@@ -279,11 +279,14 @@ class BookioDirectService {
             
             console.log(`🎯 Final search results for "${searchTerm}": ${results.map(r => r.title).join(', ')}`);
 
+            // Special handling for common requests
+            const finalResults = this.prioritizeCommonServices(results, searchTerm);
+
             return {
                 success: true,
-                found: results.length,
+                found: finalResults.length,
                 searchTerm: searchTerm,
-                services: results.map(service => ({
+                services: finalResults.map(service => ({
                     serviceId: service.serviceId,
                     name: service.title,
                     price: service.price,
@@ -293,8 +296,9 @@ class BookioDirectService {
                     priceNumber: service.priceNumber
                 }))
             };
+        }
 
-        } catch (error) {
+        catch (error) {
             console.error('Service search error:', error);
             return {
                 success: false,
@@ -302,6 +306,28 @@ class BookioDirectService {
                 searchTerm: searchTerm
             };
         }
+    }
+
+    /**
+     * Prioritize commonly requested services
+     */
+    prioritizeCommonServices(results, searchTerm) {
+        const search = searchTerm.toLowerCase();
+        
+        // For "perk lip" or "hydrafacial perk lip" - prioritize actual PERK LIP over J.Lo
+        if (search.includes('perk') && search.includes('lip')) {
+            const perkLipServices = results.filter(s => 
+                s.title.toLowerCase().includes('perk lip') && 
+                !s.title.toLowerCase().includes('j.lo')
+            );
+            const otherServices = results.filter(s => 
+                !s.title.toLowerCase().includes('perk lip') ||
+                s.title.toLowerCase().includes('j.lo')
+            );
+            return [...perkLipServices, ...otherServices];
+        }
+        
+        return results;
     }
 
     /**
