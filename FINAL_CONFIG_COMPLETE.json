@@ -1,7 +1,7 @@
 {
-  "type": "webhook",
-  "name": "refresh_booking",
-  "description": "Service search and booking parameters for REFRESH clinic appointments. The LLM should extract service information from customer conversations and format it according to the specified tool type.",
+  "type": "webhook", 
+  "name": "refresh_test",
+  "description": "REFRESH clinic booking system",
   "disable_interruptions": false,
   "force_pre_tool_speech": "auto",
   "assignments": [],
@@ -13,7 +13,7 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "Service search and booking parameters",
+      "description": "Complete booking parameters",
       "properties": [
         {
           "id": "tool_name",
@@ -46,9 +46,27 @@
           "id": "worker_id",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Worker preference: \"-1\" for any available worker, \"18204\" for Janka, \"30224\" for Veronika. Use -1 unless customer specifically requests a worker.",
+          "description": "Worker: -1 for any, 18204 for Janka, 30224 for Veronika",
           "dynamic_variable": "",
           "constant_value": "-1",
+          "required": false
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Date in DD.MM.YYYY or YYYY-MM-DD format",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Time in HH:MM format (e.g. 14:30)",
+          "dynamic_variable": "",
+          "constant_value": "",
           "required": false
         }
       ],
@@ -58,7 +76,7 @@
     "request_headers": [],
     "auth_connection": null
   },
-  "response_timeout_secs": 30,
+  "response_timeout_secs": 20,
   "dynamic_variables": {
     "dynamic_variable_placeholders": {}
   }
