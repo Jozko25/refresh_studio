@@ -1,28 +1,65 @@
 {
   "type": "webhook",
   "name": "refresh_booking",
-  "description": "REFRESH clinic services",
+  "description": "Service search and booking parameters for REFRESH clinic appointments. The LLM should extract service information from customer conversations and format it according to the specified tool type.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
   "api_schema": {
     "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
     "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
     "request_body_schema": {
+      "id": "body",
       "type": "object",
+      "description": "Service search and booking parameters",
       "properties": [
         {
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "search_service",
+          "description": "The tool function to call: \"search_service\" to find services by name, \"find_soonest_slot\" to get earliest available appointment, \"get_services_overview\" to show popular services, \"get_opening_hours\" for clinic hours.",
+          "dynamic_variable": "",
+          "constant_value": "",
           "required": true
         },
         {
           "id": "search_term",
-          "type": "string", 
+          "type": "string",
           "value_type": "llm_prompt",
-          "description": "Service name",
+          "description": "Service name to search for. Extract customer's request for specific treatments like \"hydrafacial\", \"peeling\", \"laserová epilácia\", \"institut esthederm\", etc. Required only for search_service tool.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "service_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service ID from previous search results. Use the serviceId returned by search_service when customer selects a specific service. Required for find_soonest_slot tool.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "worker_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Worker preference: \"-1\" for any available worker, \"18204\" for Janka, \"30224\" for Veronika. Use -1 unless customer specifically requests a worker.",
+          "dynamic_variable": "",
+          "constant_value": "-1",
           "required": false
         }
-      ]
-    }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 30,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
   }
 }
