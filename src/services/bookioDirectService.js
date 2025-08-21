@@ -146,20 +146,29 @@ class BookioDirectService {
             );
             console.log(`📍 Exact matches: ${exactMatch.length}`);
             
-            // 2. Smart Hydrafacial matching for Perk Lip variants
+            // 2. Smart Hydrafacial matching for Perk Lip variants (highest priority)
             const smartHydrafacialMatch = services.filter(service => {
                 const title = service.title.toLowerCase();
-                // Handle "perk lip" variations
-                if (search.includes('perk') && search.includes('lip')) {
-                    return title.includes('perk') && title.includes('lip');
-                }
-                // Handle "perklip" as one word
-                if (search.includes('perklip')) {
+                // Handle "hydrafacial perk lip" - prioritize exact PERK LIP service
+                if ((search.includes('hydrafacial') && search.includes('perk') && search.includes('lip')) ||
+                    (search.includes('perk') && search.includes('lip')) ||
+                    search.includes('perklip')) {
                     return title.includes('perk') && title.includes('lip');
                 }
                 return false;
             });
             console.log(`💋 Smart Hydrafacial Perk Lip matches: ${smartHydrafacialMatch.length}`);
+            
+            // 2b. Deprioritize J.Lo when Perk Lip is requested
+            const jLoMatches = services.filter(service => {
+                const title = service.title.toLowerCase();
+                // Only match J.Lo if NOT looking for perk lip
+                if (search.includes('perk') || search.includes('perklip')) {
+                    return false; // Don't return J.Lo when looking for Perk Lip
+                }
+                return title.includes('j.lo') || title.includes('jlo');
+            });
+            console.log(`🌟 J.Lo matches (only when not searching Perk Lip): ${jLoMatches.length}`);
             
             // 3. Exact phrase match (for multi-word searches)
             const exactPhraseMatch = services.filter(service => 
@@ -195,7 +204,7 @@ class BookioDirectService {
                 service.categoryName.toLowerCase().includes(search)
             );
 
-            // Combine and prioritize results (smart matching first)
+            // Combine and prioritize results (smart matching first, J.Lo only when appropriate)
             results = [
                 ...exactMatch,
                 ...smartHydrafacialMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
@@ -208,17 +217,25 @@ class BookioDirectService {
                     !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
                 ),
-                ...wordMatches.filter(s => 
+                ...jLoMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
                     !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId)
+                ),
+                ...wordMatches.filter(s => 
+                    !exactMatch.find(e => e.serviceId === s.serviceId) &&
+                    !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
+                    !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
+                    !titleContains.find(t => t.serviceId === s.serviceId) &&
+                    !jLoMatches.find(j => j.serviceId === s.serviceId)
                 ),
                 ...categoryMatches.filter(s => 
                     !exactMatch.find(e => e.serviceId === s.serviceId) &&
                     !smartHydrafacialMatch.find(h => h.serviceId === s.serviceId) &&
                     !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
                     !titleContains.find(t => t.serviceId === s.serviceId) &&
+                    !jLoMatches.find(j => j.serviceId === s.serviceId) &&
                     !wordMatches.find(w => w.serviceId === s.serviceId)
                 )
             ];
