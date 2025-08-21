@@ -361,20 +361,33 @@ class CallFlowService {
         const service = serviceName.toLowerCase();
         const search = searchTerm.toLowerCase();
         
-        // Direct match or contains
-        return service.includes(search) || search.includes(service) ||
+        // Split search term into individual words
+        const searchWords = search.split(' ').filter(word => word.length > 2);
+        
+        // Check if service contains any significant search words
+        const hasWordMatch = searchWords.some(word => service.includes(word));
+        
+        // Direct match or contains or word match
+        return service.includes(search) || 
+               search.includes(service) || 
+               hasWordMatch ||
                this.fuzzyMatch(service, search);
     }
 
     fuzzyMatch(text, search) {
-        // Simple fuzzy matching for common terms
+        // Enhanced fuzzy matching for common terms
         const commonMatches = {
             'hydrafacial': ['hydra', 'facial', 'pleť'],
             'laser': ['epilácia', 'odstránenie'],
             'piercing': ['piercing'],
             'tetovanie': ['tetovanie', 'obočie', 'permanent'],
             'peeling': ['peeling', 'chemický'],
-            'esthederm': ['esthederm', 'institut']
+            'esthederm': ['esthederm', 'institut'],
+            'neostrata': ['neostrata', 'retinol'],
+            'biorepeel': ['biorepeel', 'bio'],
+            'fibrómov': ['fibróm', 'odstránenie', 'kožné', 'výrastky'],
+            'laminacia': ['laminácia', 'obočie', 'brow'],
+            'mezoterapia': ['mezo', 'mezoterapia', 'injekcie']
         };
 
         for (const [key, terms] of Object.entries(commonMatches)) {
