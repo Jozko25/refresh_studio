@@ -17,7 +17,7 @@ async function main() {
             description: "REFRESH clinic booking system - Returns structured JSON data for services, prices, availability. The AI should interpret this data and present it naturally to users in Slovak.",
             response_timeout_secs: 20, // Reduced from 25 to 20 seconds
             disable_interruptions: true, // Prevent user interrupting tool calls
-            force_pre_tool_speech: true, // Force AI to say something before tool call
+            force_pre_tool_speech: false, // Don't force pre-tool speech (prompt handles this)
             api_schema: {
                 ...currentTool.tool_config.api_schema,
                 url: "https://refreshstudio-production.up.railway.app/api/elevenlabs", // Correct Railway URL
