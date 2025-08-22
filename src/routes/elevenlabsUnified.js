@@ -162,7 +162,7 @@ router.post('/', async (req, res) => {
                 const specificTimeMatch = search_term.match(/(\d{1,2})[.:](\d{2})/);
                 const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]/.test(search_term.toLowerCase());
                 
-                if (specificTimeMatch && isTimeRequest && search_term.length < 20) {
+                if (specificTimeMatch && isTimeRequest && search_term.length < 40) {
                     const requestedHour = parseInt(specificTimeMatch[1]);
                     const requestedMinute = specificTimeMatch[2] ? parseInt(specificTimeMatch[2]) : 0;
                     const requestedTime = `${requestedHour.toString().padStart(2, '0')}:${requestedMinute.toString().padStart(2, '0')}`;
