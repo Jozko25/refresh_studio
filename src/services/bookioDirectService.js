@@ -70,53 +70,21 @@ class BookioDirectService {
 
         try {
             this.isBuilding = true;
-            console.log('🏗️ Building complete service index from Bookio API...');
+            console.log('🏗️ Building complete service index...');
             const startTime = Date.now();
             
-            // Get all categories
-            const categories = await this.getCategories();
-            console.log(`📋 Found ${categories.length} categories: ${categories.map(c => c.title).join(', ')}`);
-
-            const allServices = [];
-
-            // Use Promise.all for faster concurrent processing
-            const categoryPromises = categories.map(async (category) => {
-                try {
-                    const services = await this.getServicesForCategory(category.categoryId);
-                    
-                    // Add category context to each service
-                    const enrichedServices = services.map(service => ({
-                        serviceId: service.serviceId,
-                        title: service.title,
-                        price: service.price,
-                        priceNumber: service.priceNumber,
-                        duration: service.duration,
-                        durationString: service.durationString,
-                        description: service.description,
-                        categoryId: category.categoryId,
-                        categoryName: category.title,
-                        categoryDescription: category.selectServiceTitle,
-                        type: service.type,
-                        priority: service.priority || 999,
-                        // Add searchable text for better matching
-                        searchText: `${service.title} ${category.title} ${service.description || ''}`.toLowerCase()
-                    }));
-
-                    console.log(`📦 Category "${category.title}": ${services.length} services`);
-                    return enrichedServices;
-                } catch (error) {
-                    console.warn(`⚠️ Skipping category "${category.title}" (${category.categoryId}): ${error.message}`);
-                    return [];
-                }
-            });
-
-            // Wait for all categories to complete
-            const categoryResults = await Promise.all(categoryPromises);
-            categoryResults.forEach(services => allServices.push(...services));
+            // Try to load from comprehensive crawler first
+            let allServices = await this.loadCrawledServices();
+            
+            // If no crawled data, fall back to API crawling
+            if (!allServices || allServices.length === 0) {
+                console.log('📡 No crawled data found, falling back to API crawling...');
+                allServices = await this.buildFromAPI();
+            }
 
             const buildTime = Date.now() - startTime;
-            console.log(`✅ Built complete service index: ${allServices.length} total services in ${buildTime}ms`);
-            console.log(`🏷️  Sample services: ${allServices.slice(0, 3).map(s => `${s.title} (${s.price})`).join(', ')}...`);
+            console.log(`✅ Service index ready: ${allServices.length} total services in ${buildTime}ms`);
+            console.log(`🏷️ Sample services: ${allServices.slice(0, 3).map(s => `${s.title} (${s.price})`).join(', ')}...`);
             
             // Cache the results
             this.serviceCache = allServices;
@@ -129,6 +97,88 @@ class BookioDirectService {
         } finally {
             this.isBuilding = false;
         }
+    }
+
+    /**
+     * Load services from comprehensive crawler results
+     */
+    async loadCrawledServices() {
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            
+            const dataDir = path.join(process.cwd(), 'data');
+            const filepath = path.join(dataDir, 'bookio-services-index.json');
+            
+            const data = await fs.readFile(filepath, 'utf8');
+            const crawledData = JSON.parse(data);
+            
+            // Check if data is recent (within 24 hours)
+            const lastUpdate = new Date(crawledData.lastUpdate);
+            const now = new Date();
+            const hoursOld = (now - lastUpdate) / (1000 * 60 * 60);
+            
+            if (hoursOld > 24) {
+                console.log(`📊 Crawled data is ${hoursOld.toFixed(1)} hours old, rebuilding...`);
+                return null;
+            }
+            
+            console.log(`📊 Loaded ${crawledData.totalServices} services from comprehensive crawler (${hoursOld.toFixed(1)}h old)`);
+            return crawledData.services;
+        } catch (error) {
+            console.log('📡 No crawled services data available, will use API crawling');
+            return null;
+        }
+    }
+
+    /**
+     * Original API crawling method (fallback)
+     */
+    async buildFromAPI() {
+        console.log('🌐 Building from direct API calls...');
+        
+        // Get all categories
+        const categories = await this.getCategories();
+        console.log(`📋 Found ${categories.length} categories: ${categories.map(c => c.title).join(', ')}`);
+
+        const allServices = [];
+
+        // Use Promise.all for faster concurrent processing
+        const categoryPromises = categories.map(async (category) => {
+            try {
+                const services = await this.getServicesForCategory(category.categoryId);
+                
+                // Add category context to each service
+                const enrichedServices = services.map(service => ({
+                    serviceId: service.serviceId,
+                    title: service.title,
+                    price: service.price,
+                    priceNumber: service.priceNumber,
+                    duration: service.duration,
+                    durationString: service.durationString,
+                    description: service.description,
+                    categoryId: category.categoryId,
+                    categoryName: category.title,
+                    categoryDescription: category.selectServiceTitle,
+                    type: service.type,
+                    priority: service.priority || 999,
+                    // Add searchable text for better matching
+                    searchText: `${service.title} ${category.title} ${service.description || ''}`.toLowerCase()
+                }));
+
+                console.log(`📦 Category "${category.title}": ${services.length} services`);
+                return enrichedServices;
+            } catch (error) {
+                console.warn(`⚠️ Skipping category "${category.title}" (${category.categoryId}): ${error.message}`);
+                return [];
+            }
+        });
+
+        // Wait for all categories to complete
+        const categoryResults = await Promise.all(categoryPromises);
+        categoryResults.forEach(services => allServices.push(...services));
+
+        return allServices;
     }
 
     /**
@@ -166,50 +216,77 @@ class BookioDirectService {
                 console.log(`🔍 Running comprehensive search for: "${search}"`);
                 const searchWords = search.split(' ').filter(word => word.length > 1);
                 
-                // Score each service based on relevance
+                // Score each service based on relevance with improved exact matching
                 const scoredServices = services.map(service => {
                     const title = service.title.toLowerCase();
                     const searchText = service.searchText || title;
                     let score = 0;
                     
-                    // 1. Exact title match (highest priority)
+                    // 1. EXACT title match (highest priority)
                     if (title === search) {
-                        score += 1000;
+                        score += 10000;
+                        console.log(`🎯 EXACT MATCH: "${service.title}" for search "${search}"`);
                     }
                     
-                    // 2. Title starts with search
+                    // 2. Exact phrase match in title (very high priority)
+                    if (title.includes(search) && search.length > 5) {
+                        score += 5000;
+                        console.log(`📍 EXACT PHRASE: "${service.title}" contains "${search}"`);
+                    }
+                    
+                    // 3. All search words present in exact order in title
+                    if (searchWords.length > 1) {
+                        const searchWordsInTitle = searchWords.every(word => title.includes(word));
+                        if (searchWordsInTitle) {
+                            // Check if words appear in the same order
+                            let currentIndex = 0;
+                            let wordsInOrder = true;
+                            for (const word of searchWords) {
+                                const wordIndex = title.indexOf(word, currentIndex);
+                                if (wordIndex === -1) {
+                                    wordsInOrder = false;
+                                    break;
+                                }
+                                currentIndex = wordIndex + word.length;
+                            }
+                            
+                            if (wordsInOrder) {
+                                score += 3000;
+                                console.log(`🔗 WORDS IN ORDER: "${service.title}" has all words in order`);
+                            } else {
+                                score += 1000;
+                                console.log(`📋 ALL WORDS: "${service.title}" has all words`);
+                            }
+                        }
+                    }
+                    
+                    // 4. Title starts with search
                     if (title.startsWith(search)) {
                         score += 500;
                     }
                     
-                    // 3. Title contains exact search phrase
-                    if (title.includes(search)) {
+                    // 5. Title contains search phrase (for shorter searches)
+                    if (title.includes(search) && search.length <= 5) {
                         score += 300;
                     }
                     
-                    // 4. All search words present in title
-                    const titleWordsMatch = searchWords.every(word => title.includes(word));
-                    if (titleWordsMatch && searchWords.length > 1) {
-                        score += 200;
-                    }
-                    
-                    // 5. Search text contains all words (includes category and description)
+                    // 6. Search text contains all words (includes category and description)
                     const searchTextWordsMatch = searchWords.every(word => searchText.includes(word));
                     if (searchTextWordsMatch && searchWords.length > 1) {
                         score += 100;
                     }
                     
-                    // 6. Individual word matches in title
+                    // 7. Individual word matches in title (lower priority)
                     searchWords.forEach(word => {
                         if (title.includes(word)) {
-                            score += 50;
+                            score += 10;
                         }
                     });
                     
-                    // 7. Individual word matches in searchText
+                    // 8. Individual word matches in searchText only
                     searchWords.forEach(word => {
                         if (searchText.includes(word) && !title.includes(word)) {
-                            score += 10;
+                            score += 1;
                         }
                     });
                     
