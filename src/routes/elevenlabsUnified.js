@@ -382,18 +382,56 @@ router.post('/', async (req, res) => {
                     return res.send(`Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`);
                 }
                 
+                // First get workers for the primary service to enable worker selection
+                const primaryService = searchResult.services[0];
+                let workers = [];
+                try {
+                    workers = await BookioDirectService.getWorkers(primaryService.serviceId);
+                    console.log(`👥 Available workers for ${primaryService.name}: ${workers.map(w => w.name).join(', ')}`);
+                } catch (error) {
+                    console.error(`❌ Failed to get workers for service ${primaryService.serviceId}:`, error);
+                    workers = []; // Default to empty array
+                }
+                
+                // Check if user mentioned a specific worker name
+                let requestedWorkerId = worker_id;
+                const lowerSearchTerm = search_term.toLowerCase();
+                
+                // Check for "nezáleží" keywords first
+                const anyWorkerKeywords = ['nezáleží', 'nezalezi', 'ktorýkoľvek', 'ktorykolve', 'akýkoľvek', 'akykolve'];
+                const wantsAnyWorker = anyWorkerKeywords.some(keyword => lowerSearchTerm.includes(keyword));
+                
+                if (wantsAnyWorker) {
+                    requestedWorkerId = -1; // Use any worker
+                    console.log(`👤 User wants any worker (nezáleží)`);
+                } else {
+                    // Check for specific worker names
+                    for (const worker of workers) {
+                        if (worker.workerId !== -1 && worker.name && lowerSearchTerm.includes(worker.name.toLowerCase())) {
+                            requestedWorkerId = worker.workerId;
+                            console.log(`👤 User requested specific worker: ${worker.name} (ID: ${worker.workerId})`);
+                            break;
+                        }
+                    }
+                }
+                
                 // Try to find availability for each service until we find one with slots
                 let availabilityResult = null;
                 let bestService = null;
+                let selectedWorker = null;
                 
                 for (const service of searchResult.services.slice(0, 3)) { // Try up to 3 services
                     console.log(`🔍 Testing service ${service.serviceId} (${service.name}) with robust search...`);
-                    const result = await BookioDirectService.getAvailableTimesAndDays(service.serviceId, worker_id);
+                    const result = await BookioDirectService.getAvailableTimesAndDays(service.serviceId, requestedWorkerId);
                     console.log(`🔍 Service ${service.serviceId} (${service.name}): ${result.success ? 'HAS SLOTS' : 'NO SLOTS'}`);
                     
                     if (result.success && result.soonestDate) {
                         availabilityResult = result;
                         bestService = service;
+                        // Find the worker that was used
+                        if (workers.length > 1) {
+                            selectedWorker = workers.find(w => w.workerId == result.workerId);
+                        }
                         console.log(`✅ Found available service: ${service.name} on ${result.soonestDate} at ${result.soonestTime}`);
                         break; // Found one with availability, use it
                     }
@@ -409,7 +447,28 @@ router.post('/', async (req, res) => {
                 // Handle both new and old function response formats
                 if (availabilityResult.success && (availabilityResult.soonestDate || availabilityResult.found)) {
                     response = `Služba: ${bestService.name}\n`;
-                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
+                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n`;
+                    
+                    // Add worker information if multiple workers are available
+                    const realWorkers = workers.filter(w => w.workerId !== -1);
+                    if (realWorkers.length > 1) {
+                        if (selectedWorker && selectedWorker.workerId !== -1) {
+                            response += `Pracovník: ${selectedWorker.name}\n`;
+                        } else if (requestedWorkerId === -1) {
+                            // User chose "nezáleží" - show that any worker is fine
+                            response += `Pracovník: Nezáleží (ktorýkoľvek dostupný)\n`;
+                        } else {
+                            // Show available workers for user to choose
+                            const workerNames = realWorkers.map(w => w.name).join(', ');
+                            response += `Dostupní pracovníci: ${workerNames}\n`;
+                            response += `Môžete si vybrať konkrétneho pracovníka alebo povedať "nezáleží"\n`;
+                        }
+                    } else if (realWorkers.length === 1) {
+                        // Only one worker available
+                        response += `Pracovník: ${realWorkers[0].name}\n`;
+                    }
+                    
+                    response += `\n`;
                     
                     // Use new function format if available
                     if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
@@ -466,11 +525,28 @@ router.post('/', async (req, res) => {
                 result = await BookioDirectService.searchServices(search_term);
                 if (result.success && result.found > 0) {
                     if (result.found === 1) {
-                        // Only one service found - provide details and ask if they want appointment
+                        // Only one service found - provide details with worker info
                         const service = result.services[0];
+                        let workers = [];
+                        try {
+                            workers = await BookioDirectService.getWorkers(service.serviceId);
+                        } catch (error) {
+                            console.error(`❌ Failed to get workers for service ${service.serviceId}:`, error);
+                        }
+                        const realWorkers = workers.filter(w => w.workerId !== -1);
+                        
                         response = `Našla som službu: ${service.name}\n`;
-                        response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
-                        response += `Chcete si rezervovať termín pre túto službu?`;
+                        response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                        
+                        // Add worker information
+                        if (realWorkers.length > 1) {
+                            const workerNames = realWorkers.map(w => w.name).join(', ');
+                            response += `Dostupní pracovníci: ${workerNames}\n`;
+                        } else if (realWorkers.length === 1) {
+                            response += `Pracovník: ${realWorkers[0].name}\n`;
+                        }
+                        
+                        response += `\nChcete si rezervovať termín pre túto službu?`;
                         // Store service ID for next call
                         response += `\n[SERVICE_ID:${service.serviceId}]`;
                     } else {
@@ -481,10 +557,27 @@ router.post('/', async (req, res) => {
                         );
                         
                         if (allIdentical) {
-                            // All services are identical - pick first one
+                            // All services are identical - pick first one and show worker info
+                            let workers = [];
+                            try {
+                                workers = await BookioDirectService.getWorkers(firstService.serviceId);
+                            } catch (error) {
+                                console.error(`❌ Failed to get workers for service ${firstService.serviceId}:`, error);
+                            }
+                            const realWorkers = workers.filter(w => w.workerId !== -1);
+                            
                             response = `Našla som službu: ${firstService.name}\n`;
-                            response += `Cena: ${firstService.price}, Trvanie: ${firstService.duration}\n\n`;
-                            response += `Chcete si rezervovať termín pre túto službu?`;
+                            response += `Cena: ${firstService.price}, Trvanie: ${firstService.duration}\n`;
+                            
+                            // Add worker information
+                            if (realWorkers.length > 1) {
+                                const workerNames = realWorkers.map(w => w.name).join(', ');
+                                response += `Dostupní pracovníci: ${workerNames}\n`;
+                            } else if (realWorkers.length === 1) {
+                                response += `Pracovník: ${realWorkers[0].name}\n`;
+                            }
+                            
+                            response += `\nChcete si rezervovať termín pre túto službu?`;
                             response += `\n[SERVICE_ID:${firstService.serviceId}]`;
                         } else {
                             // Actually different services - let user choose
@@ -507,6 +600,15 @@ router.post('/', async (req, res) => {
                     return res.send("Najskôr musím nájsť službu. Akú službu si želáte?");
                 }
 
+                // Get workers for this service to provide context
+                let slotWorkers = [];
+                try {
+                    slotWorkers = await BookioDirectService.getWorkers(service_id);
+                } catch (error) {
+                    console.error(`❌ Failed to get workers for service ${service_id}:`, error);
+                }
+                const slotRealWorkers = slotWorkers.filter(w => w.workerId !== -1);
+                
                 result = await BookioDirectService.findSoonestSlot(service_id, worker_id);
                 if (result.success && result.found) {
                     if (result.daysFromNow === 0) {
@@ -515,6 +617,21 @@ router.post('/', async (req, res) => {
                         response = `Najrýchlejší dostupný termín je zajtra (${result.date}) o ${result.time}.`;
                     } else {
                         response = `Najrýchlejší dostupný termín je ${result.date} o ${result.time} (o ${result.daysFromNow} dní).`;
+                    }
+                    
+                    // Add worker information
+                    if (slotRealWorkers.length > 1) {
+                        if (worker_id && worker_id !== -1) {
+                            const selectedWorker = slotWorkers.find(w => w.workerId == worker_id);
+                            if (selectedWorker) {
+                                response += `\nPracovník: ${selectedWorker.name}`;
+                            }
+                        } else {
+                            const workerNames = slotRealWorkers.map(w => w.name).join(', ');
+                            response += `\nDostupní pracovníci: ${workerNames}`;
+                        }
+                    } else if (slotRealWorkers.length === 1) {
+                        response += `\nPracovník: ${slotRealWorkers[0].name}`;
                     }
                     
                     response += ` Celkovo je na tento deň dostupných ${result.totalSlots} termínov.`;
@@ -573,7 +690,16 @@ router.post('/', async (req, res) => {
                 if (result.success) {
                     if (result.soonest && result.soonest.found) {
                         response = `${result.message}\n\n`;
-                        response += `Dostupní pracovníci: ${result.workers.map(w => w.name).join(', ')}.\n`;
+                        
+                        // Improved worker display
+                        const bookingWorkers = result.workers || [];
+                        const bookingRealWorkers = bookingWorkers.filter(w => w.workerId !== -1);
+                        if (bookingRealWorkers.length > 1) {
+                            response += `Dostupní pracovníci: ${bookingRealWorkers.map(w => w.name).join(', ')}\n`;
+                            response += `Môžete si vybrať konkrétneho pracovníka alebo povedať "nezáleží"\n`;
+                        } else if (bookingRealWorkers.length === 1) {
+                            response += `Pracovník: ${bookingRealWorkers[0].name}\n`;
+                        }
                         
                         if (result.today && result.today.totalSlots > 0) {
                             response += `Dnes je dostupných ${result.today.totalSlots} termínov`;
@@ -607,7 +733,23 @@ router.post('/', async (req, res) => {
                     response = `Našla som službu: ${result.service.name}\n`;
                     response += `Cena: ${result.service.price}, Trvanie: ${result.service.duration}\n`;
                     response += `ID služby: ${result.service.id}\n`;
-                    response += `Pracovník: ${result.worker.name}\n\n`;
+                    
+                    // Get all workers for this service, not just the one from result
+                    let lookupWorkers = [];
+                    try {
+                        lookupWorkers = await BookioDirectService.getWorkers(result.service.id);
+                    } catch (error) {
+                        console.error(`❌ Failed to get workers for service ${result.service.id}:`, error);
+                    }
+                    const lookupRealWorkers = lookupWorkers.filter(w => w.workerId !== -1);
+                    
+                    if (lookupRealWorkers.length > 1) {
+                        const workerNames = lookupRealWorkers.map(w => w.name).join(', ');
+                        response += `Dostupní pracovníci: ${workerNames}\n`;
+                    } else if (result.worker && result.worker.name) {
+                        response += `Pracovník: ${result.worker.name}\n`;
+                    }
+                    response += `\n`;
                     
                     if (result.availability.totalSlots > 0) {
                         response += `Na ${lookupDate} je dostupných ${result.availability.totalSlots} termínov:\n`;
