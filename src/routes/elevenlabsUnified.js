@@ -19,23 +19,57 @@ router.get('/test', (req, res) => {
 router.get('/debug/services', async (req, res) => {
     try {
         const services = await BookioDirectService.getServiceIndex();
-        const hydrafacialServices = services.filter(s => 
-            s.title.toLowerCase().includes('hydrafacial') || 
-            s.title.toLowerCase().includes('perk') ||
-            s.title.toLowerCase().includes('lip')
-        );
+        const { category, search } = req.query;
+        
+        let filteredServices = services;
+        
+        if (category) {
+            filteredServices = services.filter(s => 
+                s.categoryName.toLowerCase().includes(category.toLowerCase())
+            );
+        }
+        
+        if (search) {
+            filteredServices = services.filter(s => 
+                s.title.toLowerCase().includes(search.toLowerCase()) ||
+                s.categoryName.toLowerCase().includes(search.toLowerCase())
+            );
+        }
         
         res.json({
             totalServices: services.length,
-            hydrafacialServices: hydrafacialServices.map(s => ({
+            filteredServices: filteredServices.length,
+            categories: [...new Set(services.map(s => s.categoryName))],
+            services: filteredServices.slice(0, 20).map(s => ({
                 id: s.serviceId,
                 title: s.title,
                 price: s.price,
+                duration: s.durationString,
                 category: s.categoryName
             }))
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Manual rebuild endpoint
+router.post('/debug/rebuild-services', async (req, res) => {
+    try {
+        console.log('🔄 Manual service index rebuild requested');
+        const services = await BookioDirectService.buildServiceIndex();
+        res.json({
+            success: true,
+            message: `Service index rebuilt successfully with ${services.length} services`,
+            totalServices: services.length,
+            categories: [...new Set(services.map(s => s.categoryName))]
+        });
+    } catch (error) {
+        console.error('❌ Manual rebuild failed:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
     }
 });
 

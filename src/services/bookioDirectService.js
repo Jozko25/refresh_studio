@@ -16,7 +16,8 @@ class BookioDirectService {
         // Cache for service data
         this.serviceCache = null;
         this.cacheExpiry = null;
-        this.cacheTimeout = 10 * 60 * 1000; // 10 minutes
+        this.cacheTimeout = 24 * 60 * 60 * 1000; // 24 hours
+        this.isBuilding = false; // Prevent concurrent builds
     }
 
     /**
@@ -58,46 +59,64 @@ class BookioDirectService {
      * Build complete service index with all services from all categories
      */
     async buildServiceIndex() {
+        // Prevent concurrent builds
+        if (this.isBuilding) {
+            console.log('⏳ Service index build already in progress, waiting...');
+            while (this.isBuilding) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            return this.serviceCache;
+        }
+
         try {
+            this.isBuilding = true;
             console.log('🏗️ Building complete service index from Bookio API...');
+            const startTime = Date.now();
             
             // Get all categories
             const categories = await this.getCategories();
-            console.log(`📋 Found ${categories.length} categories`);
+            console.log(`📋 Found ${categories.length} categories: ${categories.map(c => c.title).join(', ')}`);
 
             const allServices = [];
 
-            // Get services from each category
-            for (const category of categories) {
+            // Use Promise.all for faster concurrent processing
+            const categoryPromises = categories.map(async (category) => {
                 try {
                     const services = await this.getServicesForCategory(category.categoryId);
                     
                     // Add category context to each service
-                    services.forEach(service => {
-                        allServices.push({
-                            serviceId: service.serviceId,
-                            title: service.title,
-                            price: service.price,
-                            priceNumber: service.priceNumber,
-                            duration: service.duration,
-                            durationString: service.durationString,
-                            description: service.description,
-                            categoryId: category.categoryId,
-                            categoryName: category.title,
-                            categoryDescription: category.selectServiceTitle,
-                            type: service.type,
-                            priority: service.priority || 999
-                        });
-                    });
+                    const enrichedServices = services.map(service => ({
+                        serviceId: service.serviceId,
+                        title: service.title,
+                        price: service.price,
+                        priceNumber: service.priceNumber,
+                        duration: service.duration,
+                        durationString: service.durationString,
+                        description: service.description,
+                        categoryId: category.categoryId,
+                        categoryName: category.title,
+                        categoryDescription: category.selectServiceTitle,
+                        type: service.type,
+                        priority: service.priority || 999,
+                        // Add searchable text for better matching
+                        searchText: `${service.title} ${category.title} ${service.description || ''}`.toLowerCase()
+                    }));
 
                     console.log(`📦 Category "${category.title}": ${services.length} services`);
+                    return enrichedServices;
                 } catch (error) {
-                    console.warn(`⚠️ Skipping category ${category.categoryId}: ${error.message}`);
-                    continue;
+                    console.warn(`⚠️ Skipping category "${category.title}" (${category.categoryId}): ${error.message}`);
+                    return [];
                 }
-            }
+            });
 
-            console.log(`✅ Built complete service index: ${allServices.length} total services`);
+            // Wait for all categories to complete
+            const categoryResults = await Promise.all(categoryPromises);
+            categoryResults.forEach(services => allServices.push(...services));
+
+            const buildTime = Date.now() - startTime;
+            console.log(`✅ Built complete service index: ${allServices.length} total services in ${buildTime}ms`);
+            console.log(`🏷️  Sample services: ${allServices.slice(0, 3).map(s => `${s.title} (${s.price})`).join(', ')}...`);
             
             // Cache the results
             this.serviceCache = allServices;
@@ -105,8 +124,10 @@ class BookioDirectService {
             
             return allServices;
         } catch (error) {
-            console.error('Error building service index:', error);
+            console.error('❌ Error building service index:', error);
             throw error;
+        } finally {
+            this.isBuilding = false;
         }
     }
 
@@ -140,81 +161,70 @@ class BookioDirectService {
             
             console.log(`🔍 Searching for: "${search}" among ${services.length} services`);
 
-            // CRITICAL FIX: For "perk lip" searches, ONLY return actual PERK LIP services
-            if (search.includes('perk') && search.includes('lip')) {
-                const perkLipServices = services.filter(service => {
+            // Use improved fuzzy matching with comprehensive index and scoring
+            {
+                console.log(`🔍 Running comprehensive search for: "${search}"`);
+                const searchWords = search.split(' ').filter(word => word.length > 1);
+                
+                // Score each service based on relevance
+                const scoredServices = services.map(service => {
                     const title = service.title.toLowerCase();
-                    return title.includes('perk lip') && !title.includes('j.lo') && !title.includes('jlo');
+                    const searchText = service.searchText || title;
+                    let score = 0;
+                    
+                    // 1. Exact title match (highest priority)
+                    if (title === search) {
+                        score += 1000;
+                    }
+                    
+                    // 2. Title starts with search
+                    if (title.startsWith(search)) {
+                        score += 500;
+                    }
+                    
+                    // 3. Title contains exact search phrase
+                    if (title.includes(search)) {
+                        score += 300;
+                    }
+                    
+                    // 4. All search words present in title
+                    const titleWordsMatch = searchWords.every(word => title.includes(word));
+                    if (titleWordsMatch && searchWords.length > 1) {
+                        score += 200;
+                    }
+                    
+                    // 5. Search text contains all words (includes category and description)
+                    const searchTextWordsMatch = searchWords.every(word => searchText.includes(word));
+                    if (searchTextWordsMatch && searchWords.length > 1) {
+                        score += 100;
+                    }
+                    
+                    // 6. Individual word matches in title
+                    searchWords.forEach(word => {
+                        if (title.includes(word)) {
+                            score += 50;
+                        }
+                    });
+                    
+                    // 7. Individual word matches in searchText
+                    searchWords.forEach(word => {
+                        if (searchText.includes(word) && !title.includes(word)) {
+                            score += 10;
+                        }
+                    });
+                    
+                    return { ...service, score };
+                }).filter(service => service.score > 0);
+                
+                // Sort by score (highest first) and limit results
+                results = scoredServices
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10);
+                
+                console.log(`🎯 Found ${results.length} matches. Top results:`);
+                results.slice(0, 3).forEach(s => {
+                    console.log(`  - ${s.title} (${s.categoryName}) [score: ${s.score}]`);
                 });
-                console.log(`💋 Found ${perkLipServices.length} PERK LIP services: ${perkLipServices.map(s => s.title).join(', ')}`);
-                
-                if (perkLipServices.length > 0) {
-                    results = perkLipServices;
-                    console.log(`🎯 Using PERK LIP services only for "${search}"`);
-                }
-            }
-
-            // CRITICAL FIX: For "Institut Esthederm OXY" searches, prioritize OXY over DISCOVERY
-            if (search.includes('institut') && search.includes('esthederm') && search.includes('oxy')) {
-                const oxyServices = services.filter(service => {
-                    const title = service.title.toLowerCase();
-                    return title.includes('institut') && title.includes('esthederm') && title.includes('oxy');
-                });
-                console.log(`🌟 Found ${oxyServices.length} Esthederm OXY services: ${oxyServices.map(s => s.title).join(', ')}`);
-                
-                if (oxyServices.length > 0) {
-                    results = oxyServices;
-                    console.log(`🎯 Using Esthederm OXY services only for "${search}"`);
-                }
-            }
-            
-            // If no perk lip specific search or no results, use general search
-            if (results.length === 0) {
-                console.log(`🔍 Running general search for: "${search}"`);
-                
-                // 1. Exact title match
-                const exactMatch = services.filter(service => 
-                    service.title.toLowerCase() === search
-                );
-                console.log(`📍 Exact matches: ${exactMatch.length}`);
-                
-                // 2. Exact phrase match (for multi-word searches)
-                const exactPhraseMatch = services.filter(service => 
-                    service.title.toLowerCase().includes(search) && 
-                    search.split(' ').length > 1 &&
-                    search.split(' ').every(word => service.title.toLowerCase().includes(word))
-                );
-                console.log(`📝 Exact phrase matches: ${exactPhraseMatch.length}`);
-                
-                // 3. Title contains search term
-                const titleContains = services.filter(service => {
-                    const title = service.title.toLowerCase();
-                    return title.includes(search);
-                });
-                console.log(`📊 Title contains matches: ${titleContains.length}`);
-                
-                // 4. Word matches (for hydrafacial searches)
-                const searchWords = search.split(' ').filter(word => word.length > 2);
-                const wordMatches = services.filter(service => {
-                    const title = service.title.toLowerCase();
-                    return searchWords.some(word => title.includes(word));
-                });
-                console.log(`🔤 Word matches: ${wordMatches.length}`);
-                
-                // Combine results with proper priority
-                results = [
-                    ...exactMatch,
-                    ...exactPhraseMatch.filter(s => !exactMatch.find(e => e.serviceId === s.serviceId)),
-                    ...titleContains.filter(s => 
-                        !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                        !exactPhraseMatch.find(p => p.serviceId === s.serviceId)
-                    ),
-                    ...wordMatches.filter(s => 
-                        !exactMatch.find(e => e.serviceId === s.serviceId) &&
-                        !exactPhraseMatch.find(p => p.serviceId === s.serviceId) &&
-                        !titleContains.find(t => t.serviceId === s.serviceId)
-                    )
-                ];
             }
 
             // Remove duplicates by service name and price
