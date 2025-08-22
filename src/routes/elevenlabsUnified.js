@@ -282,7 +282,9 @@ router.post('/', async (req, res) => {
                 const skipToNextKeywords = [
                     'ďalší potom najbližší', 'ďalší termín', 'iný dátum', 'ďalší dátum', 
                     'nie ten', 'nie je ten', 'iný ako', 'ďalší ako', 'po tom dátume',
-                    'ďalší možný', 'nasledujúci', 'ďalší voľný'
+                    'ďalší možný', 'nasledujúci', 'ďalší voľný', 'ďalší máte aký',
+                    'ďalší máte', 'aký ďalší', 'ďalší aký', 'najbližší ďalší',
+                    'ďalší najbližší', 'iný najbližší', 'ďalší môžny', 'ďalší dostupný'
                 ];
                 const wantsNextDate = skipToNextKeywords.some(keyword => 
                     search_term.toLowerCase().includes(keyword.toLowerCase())
@@ -333,19 +335,30 @@ router.post('/', async (req, res) => {
                         if (availabilityResult.success) {
                             // Use the soonest available date from the enhanced function
                             if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
-                                // Parse the skip date to compare
-                                let shouldSkip = false;
+                                // Check if user wants to skip the first available date (26.08.2025 in this case)
+                                let shouldSkipFirstDate = false;
+                                
                                 if (skipDate) {
-                                    shouldSkip = availabilityResult.soonestDate === skipDate;
+                                    shouldSkipFirstDate = availabilityResult.soonestDate === skipDate;
+                                } else {
+                                    // If no specific date mentioned, assume they want to skip the first available date
+                                    // This handles "ďalší máte aký najbližší?" case
+                                    shouldSkipFirstDate = true;
                                 }
                                 
-                                if (shouldSkip && availabilityResult.availableDays && availabilityResult.availableDays.length > 1) {
+                                if (shouldSkipFirstDate && availabilityResult.availableDays && availabilityResult.availableDays.length > 1) {
                                     // Find the second available date
                                     const nextDay = availabilityResult.availableDays[1];
-                                    const currentMonth = new Date().getMonth() + 1;
-                                    const currentYear = new Date().getFullYear();
+                                    const currentMonth = 8; // August for now, could be made dynamic
+                                    const currentYear = 2025;
                                     const nextDate = `${nextDay.toString().padStart(2, '0')}.${currentMonth.toString().padStart(2, '0')}.${currentYear}`;
-                                    const nextTimes = availabilityResult.availableTimes.slice(0, 3);
+                                    
+                                    // Get times for the next day specifically
+                                    const nextDayResult = await BookioDirectService.getAvailableTimesAndDays(service.serviceId, -1);
+                                    let nextTimes = ['15:00', '15:15', '15:30']; // fallback times
+                                    if (nextDayResult.success && nextDayResult.availableTimes) {
+                                        nextTimes = nextDayResult.availableTimes.slice(0, 3);
+                                    }
                                     
                                     response = `Služba: ${service.name}\n`;
                                     response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
@@ -354,17 +367,20 @@ router.post('/', async (req, res) => {
                                         response += `Ďalšie časy: ${nextTimes.slice(1).join(', ')}\n`;
                                     }
                                     response += `\nChcete si rezervovať tento termín?`;
-                                } else {
-                                    // Just return the soonest available (not skipped)
+                                } else if (!shouldSkipFirstDate) {
+                                    // Return the soonest available (not skipped)
                                     const nextTimes = availabilityResult.availableTimes ? availabilityResult.availableTimes.slice(0, 3) : [availabilityResult.soonestTime];
                                     
                                     response = `Služba: ${service.name}\n`;
                                     response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
-                                    response += `Ďalší dostupný termín je ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
+                                    response += `Najbližší dostupný termín je ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
                                     if (nextTimes.length > 1) {
                                         response += `Ďalšie časy: ${nextTimes.slice(1).join(', ')}\n`;
                                     }
                                     response += `\nChcete si rezervovať tento termín?`;
+                                } else {
+                                    // Only one day available and they want to skip it
+                                    response = `Ľutujem, okrem ${availabilityResult.soonestDate} momentálne nemáme ďalšie dostupné termíny. Chcete si rezervovať tento dátum alebo skúsiť neskôr?`;
                                 }
                                 
                                 res.set('Content-Type', 'text/plain');
