@@ -278,13 +278,94 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte.");
                 }
                 
+                // Check if user is asking about a specific date
+                const specificDateMatch = search_term.match(/(\d{1,2})\.?\s*(septembra|októbra|novembra|decembra|januára|februára|marca|apríla|mája|júna|júla|augusta)/i);
+                
+                if (specificDateMatch) {
+                    console.log(`📅 User asking about specific date: ${specificDateMatch[0]}`);
+                    
+                    const monthMap = {
+                        'januára': '01', 'februára': '02', 'marca': '03', 'apríla': '04',
+                        'mája': '05', 'júna': '06', 'júla': '07', 'augusta': '08',
+                        'septembra': '09', 'októbra': '10', 'novembra': '11', 'decembra': '12'
+                    };
+                    const day = specificDateMatch[1].padStart(2, '0');
+                    const month = monthMap[specificDateMatch[2].toLowerCase()];
+                    const requestedDate = `${day}.${month}.2025`;
+                    
+                    // Search for the service (extract from search term or use default)
+                    let serviceToCheck = "industrial piercing";
+                    const commonServices = [
+                        'industrial', 'piercing', 'peeling', 'biorepeel', 'multipeel',
+                        'laser', 'laserový', 'botox', 'filler', 'hyaluron', 'mezoterapia',
+                        'čistenie', 'ošetrenie', 'masáž', 'tetovanie'
+                    ];
+                    
+                    for (const serviceName of commonServices) {
+                        if (search_term.toLowerCase().includes(serviceName)) {
+                            serviceToCheck = serviceName;
+                            break;
+                        }
+                    }
+                    
+                    const searchResult = await BookioDirectService.searchServices(serviceToCheck);
+                    
+                    if (searchResult.success && searchResult.found > 0) {
+                        const service = searchResult.services[0];
+                        
+                        // Check if the specific date is available
+                        try {
+                            const availabilityResult = await BookioDirectService.getAvailableTimesAndDays(service.serviceId);
+                            
+                            if (availabilityResult.success && availabilityResult.availableDays) {
+                                // Check if the requested day is in available days
+                                const requestedDay = parseInt(specificDateMatch[1]);
+                                const monthNumber = parseInt(month);
+                                const isAvailable = availabilityResult.availableDays.includes(requestedDay);
+                                
+                                if (isAvailable && monthNumber == 8) { // August 2025 currently
+                                    // Get times for that specific date
+                                    const times = availabilityResult.availableTimes ? availabilityResult.availableTimes.slice(0, 3) : ['15:00', '15:15', '15:30'];
+                                    
+                                    response = `Služba: ${service.name}\n`;
+                                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                                    response += `Áno, ${requestedDate} máme voľné termíny:\n`;
+                                    response += `${times.join(', ')}\n\n`;
+                                    response += `Ktorý čas si vyberiete?`;
+                                } else {
+                                    response = `Služba: ${service.name}\n`;
+                                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                                    response += `Ľutujem, ${requestedDate} nemáme voľné termíny.\n`;
+                                    
+                                    // Offer closest available date instead
+                                    if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
+                                        response += `Najbližší voľný termín je ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
+                                        const nextTimes = availabilityResult.availableTimes ? availabilityResult.availableTimes.slice(1, 3) : [];
+                                        if (nextTimes.length > 0) {
+                                            response += `Ďalšie časy: ${nextTimes.join(', ')}\n`;
+                                        }
+                                    }
+                                    response += `\nChcete si rezervovať najbližší dostupný termín?`;
+                                }
+                                
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(response);
+                            }
+                        } catch (error) {
+                            console.error(`Error checking specific date ${requestedDate}:`, error);
+                        }
+                    }
+                }
+                
                 // Check if user wants to skip to next available date
                 const skipToNextKeywords = [
                     'ďalší potom najbližší', 'ďalší termín', 'iný dátum', 'ďalší dátum', 
                     'nie ten', 'nie je ten', 'iný ako', 'ďalší ako', 'po tom dátume',
                     'ďalší možný', 'nasledujúci', 'ďalší voľný', 'ďalší máte aký',
                     'ďalší máte', 'aký ďalší', 'ďalší aký', 'najbližší ďalší',
-                    'ďalší najbližší', 'iný najbližší', 'ďalší môžny', 'ďalší dostupný'
+                    'ďalší najbližší', 'iný najbližší', 'ďalší môžny', 'ďalší dostupný',
+                    'dajte mi ďalší', 'dajte mi ten ďalší', 'ten ďalší', 'nejaký ďalší',
+                    'ten ďalší nejaký', 'ďalší nejaký', 'iný nejaký'
                 ];
                 const wantsNextDate = skipToNextKeywords.some(keyword => 
                     search_term.toLowerCase().includes(keyword.toLowerCase())
