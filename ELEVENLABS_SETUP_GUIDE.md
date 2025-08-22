@@ -4,7 +4,7 @@
 Copy the **entire content** of `FINAL_PROMPT_CLEAN.md` into your ElevenLabs agent prompt field.
 
 ## 2. Tool Configuration  
-Copy the **entire content** of `ELEVENLABS_TOOL_CONFIG.json` into your ElevenLabs tool configuration.
+**IMPORTANT**: Copy the **entire JSON content** from `ELEVENLABS_TOOL_CONFIG.json` and paste it directly into your ElevenLabs tool configuration field. This is the exact ElevenLabs webhook format.
 
 ## 3. Critical Settings
 - **Temperature**: 0.1 (low for consistent responses)

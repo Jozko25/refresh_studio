@@ -1,25 +1,56 @@
 {
+  "type": "webhook",
   "name": "refresh_booking",
-  "description": "Booking tool for REFRESH clinic - finds services, shows prices, times, and availability",
-  "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
-  "method": "POST",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "tool_name": {
-        "type": "string",
-        "description": "Type of operation to perform",
-        "enum": ["quick_booking", "get_services_overview", "get_opening_hours"]
-      },
-      "search_term": {
-        "type": "string", 
-        "description": "Service name or time request (e.g., 'hydrafacial', '15:15 máte?', '26.08 o 15.00')"
-      },
-      "service_id": {
-        "type": "string",
-        "description": "Service ID if known (usually empty)"
-      }
+  "description": "REFRESH clinic booking - finds services, prices, times and availability",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "force",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Tool parameters",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Operation type: quick_booking, get_services_overview, or get_opening_hours",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "search_term",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service name or time request (e.g. hydrafacial, 15:15 máte, 26.08 o 15.00)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "service_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service ID if known (usually empty)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
     },
-    "required": ["tool_name"]
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 25,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
   }
 }
