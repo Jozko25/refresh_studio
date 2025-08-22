@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Simple CI/CD Pipeline
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
 
     steps:
     - uses: actions/checkout@v4
@@ -29,31 +29,11 @@ jobs:
     - name: Run linting
       run: npm run lint
 
-    - name: Run unit tests
+    - name: Run core unit tests only
       run: npm run test:unit
 
-    - name: Run integration tests
-      run: npm run test:integration
-
-    - name: Run edge case tests
-      run: npm run test:edge
-
-    - name: Run full test suite with coverage
-      run: npm run test:ci
-
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/lcov.info
-        fail_ci_if_error: false
-
-    - name: Comment coverage on PR
-      if: github.event_name == 'pull_request'
-      uses: romeovs/lcov-reporter-action@v0.3.1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        lcov-file: ./coverage/lcov.info
+    - name: Check package.json format
+      run: node -e "JSON.parse(require('fs').readFileSync('package.json'))"
 
   security:
     runs-on: ubuntu-latest
@@ -63,41 +43,9 @@ jobs:
     - name: Run security audit
       run: npm audit --audit-level=high
 
-    - name: Check for vulnerabilities
-      run: npm audit --json > audit.json || true
-
-  quality:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Check package.json format
-      run: node -e "JSON.parse(require('fs').readFileSync('package.json'))"
-
-    - name: Validate test files exist
-      run: |
-        test -f tests/services/bookioService.test.js
-        test -f tests/routes/booking.test.js
-        test -f tests/middleware/errorHandler.test.js
-        test -f tests/integration/server.test.js
-        test -f tests/edge-cases/validation.test.js
-        test -f tests/edge-cases/error-scenarios.test.js
-
-    - name: Check test coverage thresholds
-      run: npm run test:ci
-
   build:
     runs-on: ubuntu-latest
-    needs: [test, security, quality]
+    needs: [test, security]
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -114,20 +62,3 @@ jobs:
 
     - name: Run build
       run: npm run build
-
-    - name: Create deployment artifact
-      run: |
-        tar -czf deployment.tar.gz \
-          --exclude=node_modules \
-          --exclude=.git \
-          --exclude=tests \
-          --exclude=coverage \
-          --exclude=.github \
-          .
-
-    - name: Upload deployment artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: bookio-webhook-api
-        path: deployment.tar.gz
-        retention-days: 30

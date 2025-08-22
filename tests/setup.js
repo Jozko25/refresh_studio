@@ -12,6 +12,24 @@ process.env.BOOKIO_FACILITY_ID = '16052';
 // Global test timeout
 jest.setTimeout(30000);
 
+// Add custom Jest matchers
+expect.extend({
+  toBeOneOf(received, validOptions) {
+    const pass = validOptions.includes(received);
+    if (pass) {
+      return {
+        message: () => `expected ${received} not to be one of [${validOptions.join(', ')}]`,
+        pass: true,
+      };
+    } else {
+      return {
+        message: () => `expected ${received} to be one of [${validOptions.join(', ')}]`,
+        pass: false,
+      };
+    }
+  },
+});
+
 // Suppress console logs during tests unless explicitly needed
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
