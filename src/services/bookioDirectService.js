@@ -153,6 +153,20 @@ class BookioDirectService {
                     console.log(`🎯 Using PERK LIP services only for "${search}"`);
                 }
             }
+
+            // CRITICAL FIX: For "Institut Esthederm OXY" searches, prioritize OXY over DISCOVERY
+            if (search.includes('institut') && search.includes('esthederm') && search.includes('oxy')) {
+                const oxyServices = services.filter(service => {
+                    const title = service.title.toLowerCase();
+                    return title.includes('institut') && title.includes('esthederm') && title.includes('oxy');
+                });
+                console.log(`🌟 Found ${oxyServices.length} Esthederm OXY services: ${oxyServices.map(s => s.title).join(', ')}`);
+                
+                if (oxyServices.length > 0) {
+                    results = oxyServices;
+                    console.log(`🎯 Using Esthederm OXY services only for "${search}"`);
+                }
+            }
             
             // If no perk lip specific search or no results, use general search
             if (results.length === 0) {
