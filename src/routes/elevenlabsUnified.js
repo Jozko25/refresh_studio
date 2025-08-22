@@ -159,7 +159,7 @@ router.post('/', async (req, res) => {
                 }
                 
                 // Check if this is a specific time request (e.g., "15:15 máte?" or "A o 15.15 máte?")  
-                const specificTimeMatch = search_term.match(/(\d{1,2})[.::](\d{2})/);
+                const specificTimeMatch = search_term.match(/(\d{1,2})[.:](\d{2})/);
                 const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]/.test(search_term.toLowerCase());
                 
                 if (specificTimeMatch && isTimeRequest && search_term.length < 20) {
