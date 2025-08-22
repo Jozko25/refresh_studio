@@ -158,14 +158,15 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte.");
                 }
                 
-                // Check if this is a specific time request (e.g., "15:15 máte?" or "26.08 o 15.00")  
+                // Check if this is a specific time request (e.g., "15:15 máte?" or "26.08 o 15.00" or just "15:15")  
                 const timeAfterO = search_term.match(/\bo\s*(\d{1,2})[.:](\d{2})/); // Time after "o"
                 const anyTimeMatch = search_term.match(/(\d{1,2})[.:](\d{2})/);
                 const specificTimeMatch = timeAfterO || anyTimeMatch; // Prefer time after "o"
                 const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]|po obede|dopoludnia|\bo\s*\d{1,2}[.:]?\d{2}/.test(search_term.toLowerCase());
                 const hasDateAndTime = /\d{1,2}\.\d{1,2}.*o\s*\d{1,2}[.:]?\d{2}/.test(search_term);
+                const isStandaloneTime = specificTimeMatch && search_term.trim().match(/^\d{1,2}[.:]?\d{2}$/); // Just "15:15" or "15.15"
                 
-                if (specificTimeMatch && (isTimeRequest || hasDateAndTime) && search_term.length < 60) {
+                if (specificTimeMatch && (isTimeRequest || hasDateAndTime || isStandaloneTime) && search_term.length < 60) {
                     const requestedHour = parseInt(specificTimeMatch[1]);
                     const requestedMinute = specificTimeMatch[2] ? parseInt(specificTimeMatch[2]) : 0;
                     const requestedTime = `${requestedHour.toString().padStart(2, '0')}:${requestedMinute.toString().padStart(2, '0')}`;
