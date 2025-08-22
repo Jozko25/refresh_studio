@@ -1,0 +1,25 @@
+{
+  "name": "refresh_booking",
+  "description": "Booking tool for REFRESH clinic - finds services, shows prices, times, and availability",
+  "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+  "method": "POST",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tool_name": {
+        "type": "string",
+        "description": "Type of operation to perform",
+        "enum": ["quick_booking", "get_services_overview", "get_opening_hours"]
+      },
+      "search_term": {
+        "type": "string", 
+        "description": "Service name or time request (e.g., 'hydrafacial', '15:15 máte?', '26.08 o 15.00')"
+      },
+      "service_id": {
+        "type": "string",
+        "description": "Service ID if known (usually empty)"
+      }
+    },
+    "required": ["tool_name"]
+  }
+}
