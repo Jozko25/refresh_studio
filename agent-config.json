@@ -1,0 +1,804 @@
+Getting agent agent_4201k1gvaze0f1qaaffr94b91m5d...
+{
+  "agent_id": "agent_4201k1gvaze0f1qaaffr94b91m5d",
+  "name": "Refresh-Studio",
+  "conversation_config": {
+    "asr": {
+      "quality": "high",
+      "provider": "elevenlabs",
+      "user_input_audio_format": "pcm_16000",
+      "keywords": [
+        "objednať",
+        "chcem sa objednať",
+        "prosím vás termín",
+        "máte voľný termín",
+        "kedy máte voľno",
+        "najbližší termín",
+        "najskorší termín",
+        "dnes by sa dalo",
+        "zajtra by sa dalo",
+        "tento týždeň",
+        "budúci týždeň",
+        "ráno sa dá",
+        "poobede sa dá",
+        "večer sa dá",
+        "víkend máte otvorené",
+        "sobota sa dá",
+        "nedeľa sa dá",
+        "Pezinok termín",
+        "Bratislava termín",
+        "ktorá pobočka je voľná",
+        "chcem Pezinok",
+        "chcem Bratislavu",
+        "kde ste presne",
+        "adresa",
+        "Kollárova",
+        "Lazaretská",
+        "kde zaparkujem",
+        "máte parkovanie",
+        "je blízko MHD",
+        "aké máte procedúry",
+        "aké služby robíte",
+        "robíte kozmetiku",
+        "robíte masáže",
+        "robíte epiláciu",
+        "robíte hydrafacial",
+        "robíte laser",
+        "robíte tetovanie obočia",
+        "robíte odstránenie tetovania",
+        "robíte maderoterapiu",
+        "robíte bodyshape",
+        "formovanie postavy",
+        "robíte estetiku",
+        "koľko stojí",
+        "aká je cena",
+        "cena hydrafacial",
+        "cena epilácia",
+        "cena tetovanie",
+        "cena odstránenie tetovania",
+        "cena maderoterapia",
+        "cena bodyshape",
+        "cena kozmetika",
+        "koľko trvá",
+        "trvanie procedúry",
+        "koľko sedení treba",
+        "koľko návštev",
+        "robíte konzultácie",
+        "robíte ukážku",
+        "máte demo termín",
+        "skúšobný termín",
+        "prvé sedenie",
+        "prvá návšteva",
+        "som nová klientka",
+        "som tu prvýkrát",
+        "bola som u vás",
+        "chcem opakovať",
+        "pravidelne chodím",
+        "chcem balík",
+        "máte balíky",
+        "máte zľavu",
+        "máte akciu",
+        "máte voucher",
+        "darčekový poukaz",
+        "darček",
+        "chcem darček pre priateľku",
+        "darček pre manželku",
+        "darček pre mamu",
+        "robíte poukazy",
+        "pošlete poukaz emailom",
+        "pošlete poukaz poštou",
+        "chcem sa opýtať",
+        "mám otázku",
+        "poradíte mi",
+        "odporučíte mi",
+        "čo odporúčate na pleť",
+        "čo odporúčate na vrásky",
+        "čo odporúčate na akné",
+        "čo odporúčate na pigmenty",
+        "bolí to",
+        "je to bolestivé",
+        "je to bezpečné",
+        "je to certifikované",
+        "kto to robí",
+        "robí to kozmetička",
+        "robí to lekár",
+        "robíte bezbolestne",
+        "je tam anestézia",
+        "ako sa mám pripraviť",
+        "čo nemám robiť predtým",
+        "čo nemám robiť potom",
+        "môžem ísť na slnko",
+        "môžem ísť do bazéna",
+        "môžem ísť do solária",
+        "môžem ísť cvičiť",
+        "čo treba doniesť",
+        "treba uterák",
+        "treba vodu",
+        "treba krém",
+        "aké máte produkty",
+        "predávate krémy",
+        "predávate séra",
+        "predávate masky",
+        "robíte peeling",
+        "robíte masáž tváre",
+        "robíte relax",
+        "je tam hudba",
+        "máte príjemné prostredie",
+        "ako dlho dopredu objednávať",
+        "máte plno",
+        "je to obsadené",
+        "čakacia doba",
+        "kedy budete mať voľno",
+        "dá sa presunúť termín",
+        "dá sa zrušiť termín",
+        "dá sa zmeniť termín",
+        "chcem potvrdiť rezerváciu",
+        "potvrďte mi termín",
+        "dostanem sms",
+        "dostanem email",
+        "pripomeniete mi to",
+        "zavoláte mi",
+        "koľko minút pred prísť",
+        "kde vás nájdem",
+        "máte web",
+        "máte instagram",
+        "máte facebook",
+        "aké máte otváracie hodiny",
+        "kedy ste otvorení",
+        "dnes ste otvorení",
+        "zajtra ste otvorení",
+        "v sobotu ste otvorení",
+        "v nedeľu ste otvorení",
+        "máte voľné ráno",
+        "máte voľné poobede",
+        "máte voľné večer",
+        "robíte aj pre mužov",
+        "je to vhodné pre mužov",
+        "robíte epiláciu pre mužov",
+        "robíte tetovanie obočia pre mužov",
+        "robíte maderoterapiu pre mužov",
+        "robíte bodyshape pre mužov",
+        "robíte kozmetiku pre mužov",
+        "koľko rokov treba mať",
+        "je to vhodné pre mladých",
+        "je to vhodné pre starších",
+        "anti-aging robíte",
+        "robíte proti vráskam",
+        "robíte proti akné",
+        "robíte proti pigmentom",
+        "robíte hydratáciu",
+        "robíte výživu pleti",
+        "robíte lifting",
+        "robíte napnutie pleti",
+        "robíte regeneráciu",
+        "máte výsledky",
+        "máte fotky pred a po",
+        "máte recenzie",
+        "aké sú skúsenosti",
+        "aké sú hodnotenia",
+        "odporučila mi vás kamarátka",
+        "počula som o vás",
+        "videla som na instagrame",
+        "videla som reklamu",
+        "kde je pasáž",
+        "kde je centrum",
+        "je to v centre",
+        "je to blízko stanice",
+        "je to blízko centra",
+        "koľko trvá cesta",
+        "ako sa tam dostanem",
+        "dá sa tam MHD",
+        "dá sa tam autobusom",
+        "dá sa tam električkou",
+        "ktorá zastávka",
+        "máte klimatizáciu",
+        "máte čisto",
+        "je to hygienické",
+        "dezinfikujete",
+        "sterilné prostredie",
+        "bezpečné prostredie",
+        "môžete mi poradiť",
+        "neviete",
+        "som nervózna",
+        "bojím sa",
+        "mám citlivú pleť",
+        "mám alergiu",
+        "mám akné",
+        "mám vrásky",
+        "mám pigmenty",
+        "mám suchú pleť",
+        "mám mastnú pleť",
+        "mám zmiešanú pleť",
+        "čo je vhodné pre mňa",
+        "odporučíte konkrétnu procedúru",
+        "čo odporúčate pred svadbou",
+        "čo odporúčate pred dovolenkou",
+        "čo odporúčate pred plesom",
+        "máte rýchle ošetrenie",
+        "máte expresné ošetrenie",
+        "chcem relax",
+        "chcem oddych",
+        "chcem krásnu pleť",
+        "chcem vyzerať mladšie",
+        "chcem odstrániť tetovanie",
+        "chcem odstrániť chĺpky",
+        "chcem krásne obočie",
+        "chcem formovať postavu",
+        "chcem schudnúť",
+        "chcem pevnejšiu pokožku",
+        "chcem estetické služby",
+        "chcem kozmetiku",
+        "chcem hydrafacial",
+        "chcem laser",
+        "chcem maderoterapiu",
+        "chcem bodyshape",
+        "chcem dermokozmetiku",
+        "chcem konzultáciu",
+        "chcem info",
+        "chcem vedieť viac",
+        "chcem cenník",
+        "chcem balík služieb",
+        "koľko zákrokov potrebujem",
+        "stačí jedenkrát",
+        "musím opakovať",
+        "treba údržbu",
+        "treba kontrolu",
+        "robíte kontrolu",
+        "robíte opakovanie",
+        "robíte údržbu",
+        "platí sa záloha",
+        "platí sa dopredu",
+        "dá sa platiť kartou",
+        "dá sa platiť hotovosťou",
+        "dá sa platiť prevodom",
+        "vystavíte faktúru",
+        "dostanem bloček",
+        "podnikateľské faktúry robíte",
+        "GDPR ako máte",
+        "čo robíte s údajmi",
+        "dávate údaje tretím stranám",
+        "je to anonymné",
+        "je to súkromné",
+        "zachovávate súkromie",
+        "môžem súhlasiť",
+        "musím súhlasiť",
+        "dám vám súhlas",
+        "ako dlho máte otvorené",
+        "máte večerné termíny",
+        "máte ranné termíny",
+        "máte obedné termíny",
+        "koľko minút trvá procedúra",
+        "koľko minút pred mám prísť",
+        "kedy mám prísť",
+        "je to pre tehotné",
+        "robíte pre tehotné",
+        "robíte pre dojčiace",
+        "robíte pre citlivú pleť",
+        "robíte hypoalergénne",
+        "robíte bio produkty",
+        "používate prírodné produkty",
+        "používate chemické produkty",
+        "používate organické produkty",
+        "používate esthederm",
+        "máte dermokozmetiku",
+        "máte masky",
+        "máte séra",
+        "máte krémy",
+        "odporučíte krém",
+        "odporučíte masku",
+        "odporučíte sérum",
+        "odporučíte peeling",
+        "robíte peeling",
+        "robíte oxygen",
+        "robíte kyslíkovú terapiu",
+        "robíte hyaluron",
+        "robíte kyselinu hyalurónovú",
+        "robíte vitamíny",
+        "robíte kolagén",
+        "podporíte kolagén",
+        "robíte proti starnutiu",
+        "robíte anti-aging",
+        "robíte lifting tváre",
+        "robíte hydratáciu pleti",
+        "robíte masáž tváre",
+        "robíte relaxačnú masáž",
+        "robíte estetiku",
+        "robíte krásu",
+        "robíte starostlivosť",
+        "staráte sa o pleť",
+        "staráte sa o pokožku",
+        "pomôžete mi s pleťou",
+        "pomôžete mi s pokožkou",
+        "potrebujem pomoc",
+        "potrebujem konzultáciu",
+        "mám otázku na cenu",
+        "mám otázku na procedúru",
+        "mám otázku na termín",
+        "mám otázku na prípravu",
+        "mám otázku na starostlivosť po zákroku."
+      ]
+    },
+    "turn": {
+      "turn_timeout": 7,
+      "silence_end_call_timeout": -1,
+      "mode": "turn"
+    },
+    "tts": {
+      "model_id": "eleven_turbo_v2_5",
+      "voice_id": "tnSpp4vdxKPjI9w0GnoV",
+      "supported_voices": [],
+      "agent_output_audio_format": "pcm_16000",
+      "optimize_streaming_latency": 3,
+      "stability": 0.8,
+      "speed": 1.02,
+      "similarity_boost": 0.8,
+      "pronunciation_dictionary_locators": []
+    },
+    "conversation": {
+      "text_only": false,
+      "max_duration_seconds": 600,
+      "client_events": [
+        "audio",
+        "interruption"
+      ]
+    },
+    "language_presets": {},
+    "agent": {
+      "first_message": "Dobrý deň, vitajte na recepcii refreš studio. Ako Vám môžem pomôcť?",
+      "language": "sk",
+      "dynamic_variables": {
+        "dynamic_variable_placeholders": {}
+      },
+      "prompt": {
+        "prompt": "# REFRESH Laserové a Estetické Štúdio - AI Asistentka\n\nSte profesionálna asistentka pre REFRESH laserové a estetické štúdio v Bratislave na Lazaretskej 13. Hovoríte VÝLUČNE po slovensky a pomáhate klientom s rezerváciami.\n\n**🚨 IMMEDIATE ACTION REQUIRED: EVERY QUESTION = TOOL CALL 🚨**\n**NEVER just talk about using tools - ACTUALLY EXECUTE THEM!**\n\n## ❗ KRITICKÉ PRAVIDLO - VŽDY POUŽITE NÁSTROJE\n\n**NIKDY nevymýšľajte informácie. KAŽDÚ informáciu o službách, cenách, časoch a dostupnosti MUSÍTE získať z nástrojov.**\n\n**🚨 KRITICKÉ: MUSÍTE SKUTOČNE ZAVOLAŤ NÁSTROJ - NIE LEN HOVORIŤ O ŇOM!**\n\n**ZAKÁZANÉ ODPOVEDE:**\n- \"Používam nástroj na vyhľadanie...\" ← TOTO JE CHYBA!\n- \"Momentík, pozriem sa na to...\" ← MUSÍTE ZAVOLAŤ NÁSTROJ!\n- \"Overujem cenu...\" ← ZAVOLAJTE quick_booking!\n\n### 🚨 ZAKÁZANÉ ČINNOSTI:\n- ❌ NIKDY nehovorte ceny bez volania nástroja\n- ❌ NIKDY nehovorte časy bez volania nástroja  \n- ❌ NIKDY nehovorte \"máme voľný termín\" bez volania nástroja\n- ❌ NIKDY nevymýšľajte názvy služieb\n- ❌ NIKDY nepovedzte \"päťdesiat eur\" alebo akúkoľvek cenu bez nástroja\n\n### ✅ POVINNÉ SPRÁVANIE:\n**Pre KAŽDÚ otázku klienta MUSÍTE použiť príslušný nástroj:**\n\n**⚡ MANDATORY WORKFLOW - DODRŽUJTE PRESNE:**\n1. Klient pýta službu/termín/cenu → IHNEĎ SPUSTITE quick_booking\n2. Klient pýta \"aké služby máte\" → IHNEĎ SPUSTITE get_services_overview  \n3. Klient pýta hodiny → IHNEĎ SPUSTITE get_opening_hours\n\n**🎯 QUICK_BOOKING riešiť 95% otázok naraz!**\n\n**🔥 STOP TALKING - START CALLING TOOLS!**\n**🔥 ŽIADNE \"momentík\" - OKAMŽITE NÁSTROJ!**\n\n## 🔧 DOSTUPNÉ NÁSTROJE:\n\n**POZNÁMKA: Máte k dispozícii iba 3 parametre: tool_name, search_term, service_id**\n\n1. **quick_booking** - Všetko v jednom: nájde službu + ukáže termíny + ceny\n   - tool_name: \"quick_booking\"\n   - search_term: názov služby (presne čo klient povedal)\n   - service_id: nevyplňujte\n   \n2. **get_services_overview** - Ukáže populárne služby\n   - tool_name: \"get_services_overview\"\n   - search_term: nevyplňujte\n   - service_id: nevyplňujte\n\n3. **get_opening_hours** - Otváracie hodiny\n   - tool_name: \"get_opening_hours\"\n   - search_term: nevyplňujte\n   - service_id: nevyplňujte\n\n## 📞 PRESNÝ PRIEBEH ROZHOVORU:\n\n### Príklad 1: Klient chce službu a termín\n```\nKlient: \"Chcem korekciu viečok plazma penom, aký máte najbližší termín?\"\n→ OKAMŽITE SPUSTITE: tool_name=\"quick_booking\", search_term=\"korekciu viečok plazma penom\", service_id=\"\"\n→ DOSTANETE: Službu + cenu + najbližší termín + alternatívne časy NARAZ\n```\n\n### Príklad 2: Klient pýta len cenu\n```\nKlient: \"Koľko stojí hydrafacial?\"\n→ OKAMŽITE SPUSTITE: tool_name=\"quick_booking\", search_term=\"hydrafacial\", service_id=\"\"\n→ DOSTANETE: Službu + cenu + termíny naraz\n```\n\n### Príklad 3: Klient pýta služby\n```\nKlient: \"Aké služby máte?\"\n→ POUŽITE: tool_name=\"get_services_overview\", search_term=\"\", service_id=\"\"\n```\n\n### Príklad 4: Klient pýta hodiny\n```\nKlient: \"Aké máte hodiny?\"\n→ POUŽITE: tool_name=\"get_opening_hours\", search_term=\"\", service_id=\"\"\n```\n\n## 🎯 KONKRÉTNE PRÍKLADY SPRÁVNEHO SPRÁVANIA:\n\n### ✅ SPRÁVNE - PRESNÉ SLUŽBY:\n```\nKlient: \"Chcem hydrafacial perk lip\"\n→ OKAMŽITE VOLÁ: quick_booking s \"hydrafacial perk lip\"  \n→ DOSTANE: HYDRAFACIAL PERK LIP 55€, 20min + termíny\n\nKlient: \"Koľko stojí hydrafacial j lo?\"\n→ OKAMŽITE VOLÁ: quick_booking s \"hydrafacial j lo\"\n→ DOSTANE: Hydrafacial J.Lo™ 145€, 1h + termíny\n\nKlient: \"Chcem laserová epilácia horná pera\"\n→ OKAMŽITE VOLÁ: quick_booking s \"laserová epilácia horná pera\"\n→ DOSTANE: Presne tú službu + cenu + termíny\n```\n\n### ✅ SPRÁVNE - VŠEOBECNÉ:\n```\nKlient: \"Koľko stojí odstránenie tetovania?\"\n→ OKAMŽITE VOLÁ: quick_booking s \"odstránenie tetovania\"\n→ POVIE: Výsledky z nástroja (cena + termíny)\n```\n\n### ❌ NESPRÁVNE:\n```\nKlient: \"Koľko stojí odstránenie tetovania?\"\nAsistentka: \"Odstránenie tetovania stojí 50 eur\" ← ZAKÁZANÉ!\n```\n\n### ❌ TIEŽ NESPRÁVNE:\n```\nKlient: \"Chcem termín na hydrafacial\"\nAsistentka: \"Používam nástroj na vyhľadanie...\" ← CHYBA!\n```\n\n## 🏢 ZÁKLADNÉ INFO (len keď sa pýtajú):\n- **Adresa:** Lazaretská 13, Bratislava\n- **Hodiny:** Po-Pi 9:00-12:00, 13:00-17:00, Víkend zatvorené\n\n## 🎯 HLAVNÉ SLUŽBY (spomenite len ako príklady):\n- **HYDRAFACIAL PERK LIP** (55€, 20min) - ošetrenie pier\n- **Hydrafacial J.Lo™** (145€, 1h) - luxusné pleťové ošetrenie  \n- **HYDRAFACIAL PLATINUM** (125€, 1h) - pokročilé ošetrenie\n- **Laserová epilácia** - rôzne časti tela\n- **Chemický peeling BIOREPEEL** (62€, 30min)\n- **Laminácia obočia**\n- **Korekcia viečok plazma penom** (200€, 2h)\n\n## 🗓️ DOSTUPNOSŤ TERMÍNOV:\n**Systém VŽDY nájde dostupné termíny ak existujú!**\n- Ak quick_booking ukáže termín → **TENTO TERMÍN SKUTOČNE EXISTUJE**\n- Systém prehľadáva až 3 mesiace dopredu\n- Ak nástroj povie \"nie sú termíny\" → skutočne nie sú dostupné online\n\n**PRÍKLAD SPRÁVNEJ ODPOVEDE:**\n```\n\"Služba: HYDRAFACIAL PERK LIP\nCena: 55.00 €, Trvanie: 20min\n\nNajbližší termín: 26.08.2025 o 14:00\nĎalšie časy: 14:15, 14:30\"\n```\n\n**PRAVIDLO: PRVÝ KRÁT UKÁŽTE LEN 3 ČASY CELKOM**\n- Ak klient pýta \"ďalšie časy\" → ukážte ďalšie 3 časy\n- Ak pýta \"15:45 nemáte voľné?\" → \"15:45 nie je voľné. Máme: 12:00, 12:15, 14:30\"\n\n## ❗ FINÁLNE PRAVIDLO:\n**Ak neviem odpoveď bez nástroja = MUSÍM použiť nástroj**\n**Ak nástroj nevráti výsledok = Poviem \"Momentálne nemôžem získať túto informáciu\"**\n\n**PAMÄTAJTE: Každá informácia o službách, cenách, časoch MUSÍ prísť z nástrojov!**\n\n## 🚨 ULTIMATE RULE - TOOL EXECUTION:\n**NIE JE DOSTATOČNÉ povedať \"používam nástroj\" - MUSÍTE SKUTOČNE ZAVOLAŤ API!**\n**KAŽDÉ volanie nástroja MUSÍ poslať HTTP požiadavku na webhook!**\n**95% OTÁZOK = QUICK_BOOKING NÁSTROJ!**",
+        "llm": "gemini-2.0-flash",
+        "temperature": 0,
+        "max_tokens": -1,
+        "tool_ids": [
+          "tool_5201k2phhg36eyzagdxr4e75wh37"
+        ],
+        "built_in_tools": {
+          "end_call": {
+            "type": "system",
+            "name": "end_call",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          "language_detection": null,
+          "transfer_to_agent": null,
+          "transfer_to_number": null,
+          "skip_turn": {
+            "type": "system",
+            "name": "skip_turn",
+            "description": "Skip_turn if the agent had to just call a tool so they respond seamlessly without interruptions and misconceptions, and also if the client states that they need a time. ",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "params": {
+              "system_tool_type": "skip_turn"
+            }
+          },
+          "play_keypad_touch_tone": null,
+          "voicemail_detection": null
+        },
+        "mcp_server_ids": [],
+        "native_mcp_server_ids": [],
+        "knowledge_base": [
+          {
+            "type": "url",
+            "name": "Cenník služieb - Pezinok 🏷️ Refresh štúdio",
+            "id": "jmhyoslSWeNCghCViDhO",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Esthederm salon",
+            "id": "5ri0wHwSEMk9bhVp6i7y",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Esthederm salon",
+            "id": "wU7vM5GpLHuVhqbn1Qpf",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Cenník služieb - Bratislava 🏷️ Refresh štúdio",
+            "id": "O7OGoeItSqGh4mvJE9i3",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Cenník služieb - Bratislava 🏷️ Refresh štúdio",
+            "id": "2M77bbrndnnp5x6Z9RSw",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Akcie - akciové ceny estetických služieb ➡️ Refresh štúdio",
+            "id": "IBpyEEjmHjKSaZ1jTc2O",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Online objednávka | Refresh | Laserové a estetické štúdio",
+            "id": "xoFjFCqPCu9dFOrFHsbv",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Profesionálna kozmetika 💄 Bratislava - Pezinok | REFRESH",
+            "id": "gsi1IYclqs3bzQym9h96",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Maderoterapia ➡️ Pezinok ➡️ Refresh štúdio",
+            "id": "EHmp9BJ8ouALRLUfT8b4",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Formovanie postavy | Refresh | Laserové a estetické štúdio",
+            "id": "1AeLxushtxXaW159YbXv",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Formovanie postavy | Refresh | Laserové a estetické štúdio",
+            "id": "QOyTwTCk96ozFEEfjKYP",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Dermokozmetika Institut Esthederm 🧴 Luxus pre Vašu pleť",
+            "id": "ftN8YlCSHjS47kcPupcZ",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Tetovanie obočia s Powder Brows ➡️ Bratislava - Pezinok",
+            "id": "qQUkjNBkHz2W5sThfKV8",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Laserová epilácia Candela ✴️ Trvalé výsledky | Dobrá cena",
+            "id": "QJHks1JJTL8QrPvMW2Vz",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Hydrafacial™ - omladenie pleti | Bratislava - Pezinok",
+            "id": "TsZ7NFiMKtSXNebTLZWs",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Odstránenie tetovania laserom ✒️ Efektívne - výhodná cena",
+            "id": "QxmSzb2GJJw0HUuHqNQA",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "O nás | Refresh | Laserové a estetické štúdio",
+            "id": "X3EAhRDfxrsKa8lCYO8M",
+            "usage_mode": "auto"
+          },
+          {
+            "type": "url",
+            "name": "Laserové a estetické štúdio ❤️ Bratislava & Pezinok",
+            "id": "carOfUTEwee04XPt6IYq",
+            "usage_mode": "auto"
+          }
+        ],
+        "custom_llm": null,
+        "ignore_default_personality": false,
+        "rag": {
+          "enabled": false,
+          "embedding_model": "e5_mistral_7b_instruct",
+          "max_vector_distance": 0.6,
+          "max_documents_length": 50000,
+          "max_retrieved_rag_chunks_count": 20
+        },
+        "timezone": "Europe/Berlin",
+        "tools": [
+          {
+            "type": "webhook",
+            "name": "refresh_booking",
+            "description": "REFRESH clinic booking - finds services, prices, times and availability",
+            "response_timeout_secs": 25,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "api_schema": {
+              "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "tool_name"
+                ],
+                "description": "Tool parameters",
+                "properties": {
+                  "search_term": {
+                    "type": "string",
+                    "description": "Service name or time request (e.g. hydrafacial, 15:15 máte, 26.08 o 15.00)",
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "service_id": {
+                    "type": "string",
+                    "description": "Service ID if known (usually empty)",
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "tool_name": {
+                    "type": "string",
+                    "description": "Operation type: quick_booking, get_services_overview, or get_opening_hours",
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "request_headers": {},
+              "auth_connection": null
+            },
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "type": "system",
+            "name": "end_call",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          {
+            "type": "system",
+            "name": "skip_turn",
+            "description": "Skip_turn if the agent had to just call a tool so they respond seamlessly without interruptions and misconceptions, and also if the client states that they need a time. ",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "params": {
+              "system_tool_type": "skip_turn"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "created_at_unix_secs": 1753985941
+  },
+  "platform_settings": {
+    "auth": {
+      "enable_auth": false,
+      "allowlist": [],
+      "shareable_token": null
+    },
+    "evaluation": {
+      "criteria": []
+    },
+    "widget": {
+      "variant": "full",
+      "placement": "bottom-right",
+      "expandable": "never",
+      "avatar": {
+        "type": "orb",
+        "color_1": "#2792dc",
+        "color_2": "#9ce6e6"
+      },
+      "feedback_mode": "during",
+      "bg_color": "#ffffff",
+      "text_color": "#000000",
+      "btn_color": "#000000",
+      "btn_text_color": "#ffffff",
+      "border_color": "#e1e1e1",
+      "focus_color": "#000000",
+      "border_radius": null,
+      "btn_radius": null,
+      "action_text": null,
+      "start_call_text": null,
+      "end_call_text": null,
+      "expand_text": null,
+      "listening_text": null,
+      "speaking_text": null,
+      "shareable_page_text": null,
+      "shareable_page_show_terms": true,
+      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+      "terms_key": null,
+      "show_avatar_when_collapsed": false,
+      "disable_banner": false,
+      "override_link": null,
+      "mic_muting_enabled": false,
+      "transcript_enabled": false,
+      "text_input_enabled": true,
+      "default_expanded": false,
+      "always_expanded": false,
+      "text_contents": {
+        "main_label": null,
+        "start_call": null,
+        "start_chat": null,
+        "new_call": null,
+        "end_call": null,
+        "mute_microphone": null,
+        "change_language": null,
+        "collapse": null,
+        "expand": null,
+        "copied": null,
+        "accept_terms": null,
+        "dismiss_terms": null,
+        "listening_status": null,
+        "speaking_status": null,
+        "connecting_status": null,
+        "chatting_status": null,
+        "input_label": null,
+        "input_placeholder": null,
+        "input_placeholder_text_only": null,
+        "input_placeholder_new_conversation": null,
+        "user_ended_conversation": null,
+        "agent_ended_conversation": null,
+        "conversation_id": null,
+        "error_occurred": null,
+        "copy_id": null
+      },
+      "styles": {
+        "base": null,
+        "base_hover": null,
+        "base_active": null,
+        "base_border": null,
+        "base_subtle": null,
+        "base_primary": null,
+        "base_error": null,
+        "accent": null,
+        "accent_hover": null,
+        "accent_active": null,
+        "accent_border": null,
+        "accent_subtle": null,
+        "accent_primary": null,
+        "overlay_padding": null,
+        "button_radius": null,
+        "input_radius": null,
+        "bubble_radius": null,
+        "sheet_radius": null,
+        "compact_sheet_radius": null,
+        "dropdown_sheet_radius": null
+      },
+      "language_selector": false,
+      "supports_text_only": true,
+      "custom_avatar_path": null,
+      "language_presets": {}
+    },
+    "data_collection": {},
+    "overrides": {
+      "conversation_config_override": {
+        "tts": {
+          "voice_id": false
+        },
+        "conversation": {
+          "text_only": true
+        },
+        "agent": {
+          "first_message": true,
+          "language": true,
+          "prompt": {
+            "prompt": true,
+            "native_mcp_server_ids": false
+          }
+        }
+      },
+      "custom_llm_extra_body": false,
+      "enable_conversation_initiation_client_data_from_webhook": false
+    },
+    "call_limits": {
+      "agent_concurrency_limit": -1,
+      "daily_limit": 100000,
+      "bursting_enabled": true
+    },
+    "ban": null,
+    "privacy": {
+      "record_voice": true,
+      "retention_days": -1,
+      "delete_transcript_and_pii": false,
+      "delete_audio": false,
+      "apply_to_existing_conversations": false,
+      "zero_retention_mode": false
+    },
+    "workspace_overrides": {
+      "conversation_initiation_client_data_webhook": null,
+      "webhooks": {
+        "post_call_webhook_id": null,
+        "send_audio": false
+      }
+    },
+    "testing": {
+      "attached_tests": [],
+      "referenced_tests_ids": []
+    },
+    "safety": {
+      "is_blocked_ivc": false,
+      "is_blocked_non_ivc": false,
+      "ignore_safety_evaluation": false
+    }
+  },
+  "phone_numbers": [
+    {
+      "phone_number": "+421233527664",
+      "label": "DogHotel",
+      "supports_inbound": true,
+      "supports_outbound": true,
+      "phone_number_id": "phnum_01k0cykmtfevkvf55a4pjr6fpn",
+      "assigned_agent": {
+        "agent_id": "agent_4201k1gvaze0f1qaaffr94b91m5d",
+        "agent_name": "Refresh-Studio"
+      },
+      "provider": "sip_trunk",
+      "provider_config": {
+        "address": "pbx.zadarma.com",
+        "transport": "tls",
+        "media_encryption": "allowed",
+        "headers": {},
+        "has_auth_credentials": true,
+        "username": "513683-100",
+        "has_outbound_trunk": true
+      },
+      "outbound_trunk": {
+        "address": "pbx.zadarma.com",
+        "transport": "tls",
+        "media_encryption": "allowed",
+        "headers": {},
+        "has_auth_credentials": true,
+        "username": "513683-100",
+        "has_outbound_trunk": true
+      },
+      "inbound_trunk": {
+        "allowed_addresses": [
+          "0.0.0.0/0"
+        ],
+        "allowed_numbers": null,
+        "media_encryption": "allowed",
+        "has_auth_credentials": false,
+        "username": null
+      }
+    }
+  ],
+  "workflow": {
+    "edges": {},
+    "nodes": {
+      "start_node": {
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    }
+  },
+  "access_info": {
+    "is_creator": true,
+    "creator_name": "tachanka694008@gmail.com",
+    "creator_email": "tachanka694008@gmail.com",
+    "role": "admin"
+  },
+  "tags": []
+}

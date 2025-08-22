@@ -262,8 +262,12 @@ router.post('/', async (req, res) => {
 
         if (!tool_name) {
             console.log('❌ No tool_name provided');
-            res.set('Content-Type', 'text/plain');
-            return res.send("Nerozumiem požiadavke. Skúste to znovu.");
+            res.set('Content-Type', 'application/json');
+            return res.json({
+                success: false,
+                type: "invalid_request",
+                message: "Nerozumiem požiadavke"
+            });
         }
 
         console.log(`🔧 ElevenLabs tool call: ${tool_name}`, req.body);
@@ -274,8 +278,12 @@ router.post('/', async (req, res) => {
         switch (tool_name) {
             case 'quick_booking':
                 if (!search_term) {
-                    res.set('Content-Type', 'text/plain');
-                    return res.send("Nerozumiem, akú službu hľadáte.");
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: false,
+                        type: "missing_search_term",
+                        message: "Nerozumiem, akú službu hľadáte"
+                    });
                 }
                 
                 // Check if user is asking about a specific date
@@ -574,8 +582,13 @@ router.post('/', async (req, res) => {
                 const searchResult = await BookioDirectService.searchServices(search_term);
                 
                 if (!searchResult.success || searchResult.found === 0) {
-                    res.set('Content-Type', 'text/plain');
-                    return res.send(`Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`);
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: false,
+                        type: "service_not_found",
+                        search_term: search_term,
+                        message: `Služba "${search_term}" nebola nájdená`
+                    });
                 }
                 
                 // First get workers for the primary service to enable worker selection
@@ -642,73 +655,102 @@ router.post('/', async (req, res) => {
                 
                 // Handle both new and old function response formats
                 if (availabilityResult.success && (availabilityResult.soonestDate || availabilityResult.found)) {
-                    response = `Služba: ${bestService.name}\n`;
-                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n`;
-                    
-                    // Add worker information if multiple workers are available
                     const realWorkers = workers.filter(w => w.workerId !== -1);
+                    
+                    let workerInfo = null;
                     if (realWorkers.length > 1) {
                         if (selectedWorker && selectedWorker.workerId !== -1) {
-                            response += `Pracovník: ${selectedWorker.name}\n`;
+                            workerInfo = {
+                                type: "specific_worker",
+                                name: selectedWorker.name,
+                                workerId: selectedWorker.workerId
+                            };
                         } else if (requestedWorkerId === -1) {
-                            // User chose "nezáleží" - show that any worker is fine
-                            response += `Pracovník: Nezáleží (ktorýkoľvek dostupný)\n`;
+                            workerInfo = {
+                                type: "any_worker",
+                                message: "Nezáleží (ktorýkoľvek dostupný)"
+                            };
                         } else {
-                            // Show available workers for user to choose
-                            const workerNames = realWorkers.map(w => w.name).join(', ');
-                            response += `Dostupní pracovníci: ${workerNames}\n`;
-                            response += `Môžete si vybrať konkrétneho pracovníka alebo povedať "nezáleží"\n`;
+                            workerInfo = {
+                                type: "multiple_available",
+                                workers: realWorkers.map(w => ({ name: w.name, workerId: w.workerId }))
+                            };
                         }
                     } else if (realWorkers.length === 1) {
-                        // Only one worker available
-                        response += `Pracovník: ${realWorkers[0].name}\n`;
+                        workerInfo = {
+                            type: "single_worker",
+                            name: realWorkers[0].name,
+                            workerId: realWorkers[0].workerId
+                        };
                     }
                     
-                    response += `\n`;
-                    
                     // Use new function format if available
+                    let appointmentData = {};
                     if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
-                        response += `Najbližší termín: ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
-                        
-                        if (availabilityResult.availableTimes && availabilityResult.availableTimes.length > 1) {
-                            // Show only first 2 additional times (total 3 times)
-                            const nextTimes = availabilityResult.availableTimes.slice(1, 3);
-                            if (nextTimes.length > 0) {
-                                response += `Ďalšie časy: ${nextTimes.join(', ')}\n`;
-                            }
-                        }
+                        appointmentData = {
+                            nearest_date: availabilityResult.soonestDate,
+                            nearest_time: availabilityResult.soonestTime,
+                            additional_times: availabilityResult.availableTimes ? availabilityResult.availableTimes.slice(1, 3) : []
+                        };
                     } 
                     // Fallback to old function format
                     else if (availabilityResult.date && availabilityResult.time) {
-                        response += `Najbližší termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
-                        
-                        if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
-                            // Show only first 2 additional times (total 3 times)
-                            const nextTimes = availabilityResult.allTimes.slice(1, 3);
-                            if (nextTimes.length > 0) {
-                                response += `Ďalšie časy: ${nextTimes.join(', ')}\n`;
-                            }
-                        }
+                        appointmentData = {
+                            nearest_date: availabilityResult.date,
+                            nearest_time: availabilityResult.time,
+                            additional_times: availabilityResult.allTimes ? availabilityResult.allTimes.slice(1, 3) : []
+                        };
                     }
                     
-                    response += `\nChcete si rezervovať tento termín?`;
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: true,
+                        type: "booking_available",
+                        service: {
+                            name: bestService.name,
+                            price: bestService.price,
+                            duration: bestService.duration,
+                            serviceId: bestService.serviceId
+                        },
+                        worker: workerInfo,
+                        appointment: appointmentData
+                    });
                 } else {
-                    response = `Služba: ${bestService.name}\n`;
-                    response += `Cena: ${bestService.price}, Trvanie: ${bestService.duration}\n\n`;
-                    response += `Momentálne nie sú dostupné online termíny. Môžete sa objednať telefonicky alebo navštíviť naše štúdio priamo.`;
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: false,
+                        type: "no_availability",
+                        service: {
+                            name: bestService.name,
+                            price: bestService.price,
+                            duration: bestService.duration,
+                            serviceId: bestService.serviceId
+                        },
+                        message: "Momentálne nie sú dostupné online termíny"
+                    });
                 }
                 break;
 
             case 'get_services_overview':
                 result = await CallFlowService.getServiceOverview();
                 if (result.success && result.overview) {
-                    response = "Ponúkame tieto hlavné služby:\n\n";
-                    result.overview.forEach((service, index) => {
-                        response += `${index + 1}. ${service.name} - ${service.description}\n`;
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: true,
+                        type: "services_overview",
+                        services: result.overview.map((service, index) => ({
+                            index: index + 1,
+                            name: service.name,
+                            description: service.description
+                        }))
                     });
-                    response += "\nChcete počuť o ďalších službách alebo vás zaujíma niektorá z týchto?";
                 } else {
-                    response = "Momentálne nemôžem načítať zoznam služieb. Skúste to prosím znovu.";
+                    res.set('Content-Type', 'application/json');
+                    return res.json({
+                        success: false,
+                        type: "services_error",
+                        message: "Momentálne nemôžem načítať zoznam služieb"
+                    });
                 }
                 break;
 
@@ -1005,37 +1047,48 @@ router.post('/', async (req, res) => {
                 break;
 
             case 'get_opening_hours':
-                response = `Naše otváracie hodiny sú:
-Pondelok až piatok: 9:00 - 12:00 a 13:00 - 17:00
-Sobota a nedeľa: Zatvorené
-
-Nachádzame sa na adrese:
-Lazaretská 13, Bratislava
-
-Pre rezervácie môžete volať alebo navštíviť našu webstránku.`;
-                result = {
+                res.set('Content-Type', 'application/json');
+                return res.json({
                     success: true,
-                    data: {
-                        weekdays: "9:00-12:00, 13:00-17:00",
-                        weekend: "Zatvorené",
+                    type: "opening_hours",
+                    hours: {
+                        weekdays: {
+                            days: "Pondelok až piatok",
+                            times: "9:00 - 12:00 a 13:00 - 17:00"
+                        },
+                        weekend: {
+                            days: "Sobota a nedeľa", 
+                            times: "Zatvorené"
+                        }
+                    },
+                    location: {
                         address: "Lazaretská 13, Bratislava"
                     }
-                };
+                });
                 break;
 
             default:
-                res.set('Content-Type', 'text/plain');
-                return res.send(`Neznámy nástroj: ${tool_name}. Dostupné nástroje: get_services_overview, search_service, find_soonest_slot, check_specific_slot, get_booking_info, quick_service_lookup, get_opening_hours`);
+                res.set('Content-Type', 'application/json');
+                return res.json({
+                    success: false,
+                    type: "unknown_tool",
+                    message: `Neznámy nástroj: ${tool_name}`,
+                    available_tools: ["quick_booking", "get_services_overview", "get_opening_hours"]
+                });
         }
 
-        // ElevenLabs expects plain text response
-        res.set('Content-Type', 'text/plain');
-        res.send(response);
+        // This should not be reached anymore as all cases return directly
+        res.set('Content-Type', 'application/json');
+        res.json({ success: false, type: "unexpected_error", message: "Neočakávaná chyba" });
 
     } catch (error) {
         console.error('ElevenLabs unified endpoint error:', error);
-        res.set('Content-Type', 'text/plain');
-        res.send("Nastala chyba. Skúste to prosím znovu.");
+        res.set('Content-Type', 'application/json');
+        res.json({
+            success: false,
+            type: "server_error", 
+            message: "Nastala chyba. Skúste to prosím znovu"
+        });
     }
 });
 
