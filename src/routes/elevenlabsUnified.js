@@ -282,10 +282,65 @@ router.post('/', async (req, res) => {
                 const timeAfterO = search_term.match(/\bo\s*(\d{1,2})[.:](\d{2})/); // Time after "o"
                 const anyTimeMatch = search_term.match(/(\d{1,2})[.:](\d{2})/);
                 const specificTimeMatch = timeAfterO || anyTimeMatch; // Prefer time after "o"
-                const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]|po obede|dopoludnia|\bo\s*\d{1,2}[.:]?\d{2}/.test(search_term.toLowerCase());
+                
+                // Check for time ranges like "medzi druhou a treťou" (between 2 and 3)
+                const timeRangeMatch = search_term.toLowerCase().match(/medzi\s+(\w+)\s+a\s+(\w+)|okolo\s+(\w+)/);
+                const slovakNumbers = {
+                    'jednou': 13, 'druhou': 14, 'treťou': 15, 'štvrtou': 16, 'piatou': 17, 
+                    'šiestou': 18, 'siedmou': 19, 'ôsmou': 20, 'deviatou': 21, 'desiatou': 22,
+                    'jeden': 13, 'druhú': 14, 'tretiu': 15, 'štvrtú': 16, 'piatu': 17,
+                    'druhej': 14, 'tretej': 15, 'štvrtej': 16, 'piatej': 17, 'šiestej': 18
+                };
+                
+                const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]|po obede|dopoludnia|medzi.*a.*|okolo.*|\bo\s*\d{1,2}[.:]?\d{2}/.test(search_term.toLowerCase());
                 const hasDateAndTime = /\d{1,2}\.\d{1,2}.*o\s*\d{1,2}[.:]?\d{2}/.test(search_term);
                 const isStandaloneTime = specificTimeMatch && search_term.trim().match(/^\d{1,2}[.:]?\d{2}$/); // Just "15:15" or "15.15"
                 
+                // Handle time ranges first (priority over specific times)
+                if (timeRangeMatch && isTimeRequest) {
+                    let startHour = 14; // Default fallback
+                    let endHour = 15;   // Default fallback
+                    
+                    if (timeRangeMatch[1] && timeRangeMatch[2]) {
+                        // "medzi druhou a treťou" case
+                        startHour = slovakNumbers[timeRangeMatch[1]] || 14;
+                        endHour = slovakNumbers[timeRangeMatch[2]] || 15;
+                    } else if (timeRangeMatch[3]) {
+                        // "okolo druhej" case  
+                        const centerHour = slovakNumbers[timeRangeMatch[3]] || 14;
+                        startHour = centerHour;
+                        endHour = centerHour + 1;
+                    }
+                    
+                    console.log(`🕐 Client asking for time range: ${startHour}:00 - ${endHour}:00`);
+                    
+                    // Get the current service from context (Institut Esthederm MULTI-PEEL in this case)
+                    const contextSearchResult = await BookioDirectService.searchServices("Institut Esthederm MULTI-PEEL");
+                    
+                    if (contextSearchResult.success && contextSearchResult.found > 0) {
+                        const service = contextSearchResult.services[0];
+                        const availabilityResult = await BookioDirectService.getAvailableTimesAndDays(service.serviceId);
+                        
+                        if (availabilityResult.success && availabilityResult.availableTimes) {
+                            // Filter times within the requested range
+                            const timesInRange = availabilityResult.availableTimes.filter(time => {
+                                const [hour, minute] = time.split(':').map(n => parseInt(n));
+                                return hour >= startHour && hour < endHour;
+                            });
+                            
+                            if (timesInRange.length > 0) {
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(`Áno, medzi ${startHour}:00 a ${endHour}:00 máme voľné časy: ${timesInRange.join(', ')}. Ktorý si vyberiete?`);
+                            } else {
+                                // Show closest available times
+                                const nextTimes = availabilityResult.availableTimes.slice(0, 3);
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(`Medzi ${startHour}:00 a ${endHour}:00 momentálne nemáme voľný termín. Najbližšie voľné časy sú: ${nextTimes.join(', ')}`);
+                            }
+                        }
+                    }
+                }
+
                 if (specificTimeMatch && (isTimeRequest || hasDateAndTime || isStandaloneTime) && search_term.length < 60) {
                     const requestedHour = parseInt(specificTimeMatch[1]);
                     const requestedMinute = specificTimeMatch[2] ? parseInt(specificTimeMatch[2]) : 0;
