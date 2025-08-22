@@ -17,7 +17,7 @@ async function main() {
             description: "REFRESH clinic booking system - Returns structured JSON data for services, prices, availability. The AI should interpret this data and present it naturally to users in Slovak.",
             api_schema: {
                 ...currentTool.tool_config.api_schema,
-                url: "https://refresh-studio.onrender.com/elevenlabs-unified", // Updated URL
+                url: "https://refreshstudio-production.up.railway.app/api/elevenlabs", // Correct Railway URL
                 request_body_schema: {
                     type: "object",
                     required: ["tool_name"],
