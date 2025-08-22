@@ -158,20 +158,41 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte.");
                 }
                 
-                // Check if this is a specific time request (e.g., "15:45 nemáte niečo voľné?")  
-                const specificTimeMatch = search_term.match(/(\d{1,2}):?(\d{2})?/);
-                const isTimeRequest = /nem[aá]te.*vo[ľl]n[eé]|m[aá]te.*vo[ľl]n[eé]/.test(search_term.toLowerCase());
+                // Check if this is a specific time request (e.g., "15:15 máte?" or "A o 15.15 máte?")  
+                const specificTimeMatch = search_term.match(/(\d{1,2})[.::](\d{2})/);
+                const isTimeRequest = /m[aá]te|nem[aá]te|vo[ľl]n[eé]/.test(search_term.toLowerCase());
                 
-                if (specificTimeMatch && isTimeRequest) {
+                if (specificTimeMatch && isTimeRequest && search_term.length < 20) {
                     const requestedHour = parseInt(specificTimeMatch[1]);
                     const requestedMinute = specificTimeMatch[2] ? parseInt(specificTimeMatch[2]) : 0;
                     const requestedTime = `${requestedHour.toString().padStart(2, '0')}:${requestedMinute.toString().padStart(2, '0')}`;
                     
                     console.log(`🕐 Client asking for specific time: ${requestedTime}`);
                     
-                    // For now, return a simple response. Later we can make this dynamic
+                    // Use the most likely service based on the conversation - chemický peeling biorepeel
+                    const fallbackSearchResult = await BookioDirectService.searchServices("chemický peeling biorepeel");
+                    
+                    if (fallbackSearchResult.success && fallbackSearchResult.found > 0) {
+                        const service = fallbackSearchResult.services[0];
+                        const availabilityResult = await BookioDirectService.getAvailableTimesAndDays(service.serviceId);
+                        
+                        if (availabilityResult.success && availabilityResult.availableTimes) {
+                            const hasRequestedTime = availabilityResult.availableTimes.includes(requestedTime);
+                            
+                            if (hasRequestedTime) {
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(`Áno, ${requestedTime} je voľné. Chcete si rezervovať?`);
+                            } else {
+                                // Show 3 closest times
+                                const closestTimes = availabilityResult.availableTimes.slice(0, 3);
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(`${requestedTime} nie je voľné. Máme: ${closestTimes.join(', ')}`);
+                            }
+                        }
+                    }
+                    
                     res.set('Content-Type', 'text/plain');
-                    return res.send(`${requestedTime} nie je voľné. Máme: 12:00, 12:15, 14:30`);
+                    return res.send(`${requestedTime} nie je voľné. Skúste iný čas.`);
                 }
                 
                 // First search for the service
