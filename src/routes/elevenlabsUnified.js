@@ -278,6 +278,105 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte.");
                 }
                 
+                // Check if user wants to skip to next available date
+                const skipToNextKeywords = [
+                    'ďalší potom najbližší', 'ďalší termín', 'iný dátum', 'ďalší dátum', 
+                    'nie ten', 'nie je ten', 'iný ako', 'ďalší ako', 'po tom dátume',
+                    'ďalší možný', 'nasledujúci', 'ďalší voľný'
+                ];
+                const wantsNextDate = skipToNextKeywords.some(keyword => 
+                    search_term.toLowerCase().includes(keyword.toLowerCase())
+                );
+                
+                if (wantsNextDate) {
+                    console.log(`🔄 User wants to skip to next available date for current service`);
+                    
+                    // Extract current date if mentioned (e.g., "nie ten 26. augusta")
+                    const dateMatch = search_term.match(/(\d{1,2})\.?\s*(augusta|septembra|októbra|novembra|decembra|januára|februára|marca|apríla|mája|júna|júla)/i);
+                    let skipDate = null;
+                    if (dateMatch) {
+                        const monthMap = {
+                            'januára': '01', 'februára': '02', 'marca': '03', 'apríla': '04',
+                            'mája': '05', 'júna': '06', 'júla': '07', 'augusta': '08',
+                            'septembra': '09', 'októbra': '10', 'novembra': '11', 'decembra': '12'
+                        };
+                        const day = dateMatch[1].padStart(2, '0');
+                        const month = monthMap[dateMatch[2].toLowerCase()] || '08';
+                        skipDate = `${day}.${month}.2025`;
+                        console.log(`📅 User wants to skip date: ${skipDate}`);
+                    }
+                    
+                    // Try to extract service name from the search term or use a common default
+                    let serviceToSearch = "industrial piercing"; // fallback default
+                    
+                    // Check if search term contains a service name
+                    const commonServices = [
+                        'industrial', 'piercing', 'peeling', 'biorepeel', 'multipeel',
+                        'laser', 'laserový', 'botox', 'filler', 'hyaluron', 'mezoterapia',
+                        'čistenie', 'ošetrenie', 'masáž', 'tetovanie'
+                    ];
+                    
+                    for (const serviceName of commonServices) {
+                        if (search_term.toLowerCase().includes(serviceName)) {
+                            serviceToSearch = serviceName;
+                            break;
+                        }
+                    }
+                    
+                    console.log(`🔍 Searching for service: ${serviceToSearch}`);
+                    const searchResult = await BookioDirectService.searchServices(serviceToSearch);
+                    
+                    if (searchResult.success && searchResult.found > 0) {
+                        const service = searchResult.services[0];
+                        const availabilityResult = await BookioDirectService.getAvailableTimesAndDays(service.serviceId);
+                        
+                        if (availabilityResult.success) {
+                            // Use the soonest available date from the enhanced function
+                            if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
+                                // Parse the skip date to compare
+                                let shouldSkip = false;
+                                if (skipDate) {
+                                    shouldSkip = availabilityResult.soonestDate === skipDate;
+                                }
+                                
+                                if (shouldSkip && availabilityResult.availableDays && availabilityResult.availableDays.length > 1) {
+                                    // Find the second available date
+                                    const nextDay = availabilityResult.availableDays[1];
+                                    const currentMonth = new Date().getMonth() + 1;
+                                    const currentYear = new Date().getFullYear();
+                                    const nextDate = `${nextDay.toString().padStart(2, '0')}.${currentMonth.toString().padStart(2, '0')}.${currentYear}`;
+                                    const nextTimes = availabilityResult.availableTimes.slice(0, 3);
+                                    
+                                    response = `Služba: ${service.name}\n`;
+                                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                                    response += `Ďalší dostupný termín je ${nextDate} o ${nextTimes[0]}\n`;
+                                    if (nextTimes.length > 1) {
+                                        response += `Ďalšie časy: ${nextTimes.slice(1).join(', ')}\n`;
+                                    }
+                                    response += `\nChcete si rezervovať tento termín?`;
+                                } else {
+                                    // Just return the soonest available (not skipped)
+                                    const nextTimes = availabilityResult.availableTimes ? availabilityResult.availableTimes.slice(0, 3) : [availabilityResult.soonestTime];
+                                    
+                                    response = `Služba: ${service.name}\n`;
+                                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                                    response += `Ďalší dostupný termín je ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
+                                    if (nextTimes.length > 1) {
+                                        response += `Ďalšie časy: ${nextTimes.slice(1).join(', ')}\n`;
+                                    }
+                                    response += `\nChcete si rezervovať tento termín?`;
+                                }
+                                
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(response);
+                            } else {
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(`Ľutujem, momentálne nie sú dostupné ďalšie termíny. Skúste neskôr alebo sa obráťte na našu recepciu.`);
+                            }
+                        }
+                    }
+                }
+                
                 // Check if this is a specific time request (e.g., "15:15 máte?" or "26.08 o 15.00" or just "15:15")  
                 const timeAfterO = search_term.match(/\bo\s*(\d{1,2})[.:](\d{2})/); // Time after "o"
                 const anyTimeMatch = search_term.match(/(\d{1,2})[.:](\d{2})/);
