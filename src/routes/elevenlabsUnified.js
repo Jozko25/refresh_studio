@@ -200,7 +200,26 @@ router.post('/', async (req, res) => {
                         response += `Najbližší voľný termín: ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
                         
                         if (availabilityResult.availableTimes && availabilityResult.availableTimes.length > 1) {
-                            response += `Ďalšie časy v ten deň: ${availabilityResult.availableTimes.slice(1, 4).join(', ')}\n`;
+                            const allTimes = availabilityResult.availableTimes;
+                            const morningTimes = allTimes.filter(time => {
+                                const hour = parseInt(time.split(':')[0]);
+                                return hour < 12;
+                            });
+                            const afternoonTimes = allTimes.filter(time => {
+                                const hour = parseInt(time.split(':')[0]);
+                                return hour >= 12;
+                            });
+                            
+                            // Show morning times (excluding the first one already shown)
+                            const otherMorningTimes = morningTimes.filter(time => time !== availabilityResult.soonestTime);
+                            if (otherMorningTimes.length > 0) {
+                                response += `Ďalšie časy dopoludnia: ${otherMorningTimes.slice(0, 6).join(', ')}\n`;
+                            }
+                            
+                            // Show afternoon times
+                            if (afternoonTimes.length > 0) {
+                                response += `Časy popoludní: ${afternoonTimes.slice(0, 8).join(', ')}\n`;
+                            }
                         }
                     } 
                     // Fallback to old function format
@@ -208,7 +227,26 @@ router.post('/', async (req, res) => {
                         response += `Najbližší voľný termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
                         
                         if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
-                            response += `Ďalšie časy v ten deň: ${availabilityResult.allTimes.slice(1, 4).join(', ')}\n`;
+                            const allTimes = availabilityResult.allTimes;
+                            const morningTimes = allTimes.filter(time => {
+                                const hour = parseInt(time.split(':')[0]);
+                                return hour < 12;
+                            });
+                            const afternoonTimes = allTimes.filter(time => {
+                                const hour = parseInt(time.split(':')[0]);
+                                return hour >= 12;
+                            });
+                            
+                            // Show morning times (excluding the first one already shown)
+                            const otherMorningTimes = morningTimes.filter(time => time !== availabilityResult.time);
+                            if (otherMorningTimes.length > 0) {
+                                response += `Ďalšie časy dopoludnia: ${otherMorningTimes.slice(0, 6).join(', ')}\n`;
+                            }
+                            
+                            // Show afternoon times
+                            if (afternoonTimes.length > 0) {
+                                response += `Časy popoludní: ${afternoonTimes.slice(0, 8).join(', ')}\n`;
+                            }
                         }
                     }
                     
