@@ -73,18 +73,33 @@ class ElevenLabsAPI {
             // Get current agent config
             const agent = await this.getAgent(agentId);
             
-            // Update the prompt in conversation config - fix the structure
-            const updatedConfig = {
-                ...agent.conversation_config,
-                prompt: {
-                    prompt: prompt
-                }
+            // Get the current prompt configuration and clean it
+            const currentPrompt = agent.conversation_config.agent.prompt;
+            
+            // Create updated prompt config - remove tools field but keep tool_ids
+            const updatedPrompt = {
+                ...currentPrompt,
+                prompt: prompt
             };
             
-            // Send update
-            const result = await this.updateAgent(agentId, updatedConfig);
+            // Remove the tools field to avoid conflict with tool_ids
+            if (updatedPrompt.tools) {
+                delete updatedPrompt.tools;
+            }
+            
+            console.log('✅ Prompt update: tools field removed, ready to send');
+            
+            // Send the update with the cleaned prompt configuration
+            const response = await this.client.patch(`/convai/agents/${agentId}`, {
+                conversation_config: {
+                    agent: {
+                        prompt: updatedPrompt
+                    }
+                }
+            });
+            
             console.log('Prompt updated from FINAL_PROMPT_CLEAN.md');
-            return result;
+            return response.data;
         } catch (error) {
             console.error('Error updating prompt:', error.response?.data || error.message);
             throw error;
