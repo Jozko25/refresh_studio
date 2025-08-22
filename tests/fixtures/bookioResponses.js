@@ -81,14 +81,16 @@ export const mockAllowedTimes = {
 
 export const mockBookingSuccess = {
   data: {
-    success: true,
-    order: {
-      id: 12345,
-      confirmationNumber: "ABC123",
-      customerInfo: {
-        firstName: "John",
-        lastName: "Doe",
-        email: "john@example.com"
+    data: {
+      success: true,
+      order: {
+        id: 12345,
+        confirmationNumber: "ABC123",
+        customerInfo: {
+          firstName: "John",
+          lastName: "Doe",
+          email: "john@example.com"
+        }
       }
     }
   }
@@ -96,9 +98,11 @@ export const mockBookingSuccess = {
 
 export const mockBookingFailure = {
   data: {
-    success: false,
-    errors: {
-      general: ["The selected time slot is no longer available"]
+    data: {
+      success: false,
+      errors: {
+        general: ["The selected time slot is no longer available"]
+      }
     }
   }
 };
@@ -119,6 +123,7 @@ export const mockInvalidCustomerInfo = {
 };
 
 export const apiErrorResponse = {
+  message: "Request failed with status code 500",
   response: {
     status: 500,
     data: {

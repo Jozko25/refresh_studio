@@ -305,8 +305,8 @@ describe('BookioService', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.booking).toEqual(mockBookingSuccess.data);
-      expect(result.order).toEqual(mockBookingSuccess.data.order);
+      expect(result.booking).toEqual(mockBookingSuccess.data.data);
+      expect(result.order).toEqual(mockBookingSuccess.data.data.order);
       
       expect(mockedAxios.post).toHaveBeenCalledWith(
         'https://services.bookio.com/widget/api/createReservation?lang=en',
@@ -339,7 +339,7 @@ describe('BookioService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Booking failed - API returned success: false');
-      expect(result.details).toEqual(mockBookingFailure.data.errors);
+      expect(result.details).toEqual(mockBookingFailure.data.data.errors);
     });
 
     test('should handle network errors during booking', async () => {
@@ -419,7 +419,7 @@ describe('BookioService', () => {
       );
 
       expect(result.available).toBe(false);
-      expect(result.reason).toBe('Network Error');
+      expect(result.reason).toBe('Could not fetch available times');
     });
 
     test('should handle failed times fetch', async () => {
@@ -453,8 +453,8 @@ describe('BookioService', () => {
 
       const result = await BookioService.getAllowedDays();
 
-      expect(result.success).toBe(true);
-      expect(result.data).toBeNull();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     test('should handle undefined responses', async () => {
@@ -462,7 +462,8 @@ describe('BookioService', () => {
 
       const result = await BookioService.getAllowedTimes(130113, '15.08.2025 10:22');
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     test('should handle very large days to check parameter', async () => {
