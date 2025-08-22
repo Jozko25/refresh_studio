@@ -1,4 +1,5 @@
 import axios from 'axios';
+import LLMServiceMatcher from './llmServiceMatcher.js';
 
 /**
  * Direct Bookio API Service
@@ -18,6 +19,9 @@ class BookioDirectService {
         this.cacheExpiry = null;
         this.cacheTimeout = 24 * 60 * 60 * 1000; // 24 hours
         this.isBuilding = false; // Prevent concurrent builds
+        
+        // LLM service matcher (lazy-loaded)
+        this.llmMatcher = null;
     }
 
     /**
@@ -192,7 +196,7 @@ class BookioDirectService {
     }
 
     /**
-     * Search services with exact matching - improved for better client experience
+     * Search services using LLM-powered intelligent matching
      */
     async searchServices(searchTerm) {
         try {
@@ -206,137 +210,128 @@ class BookioDirectService {
                 };
             }
 
-            // Search strategies (in order of priority) - PRECISE MATCHING
-            let results = [];
-            
             console.log(`🔍 Searching for: "${search}" among ${services.length} services`);
 
-            // Use improved fuzzy matching with comprehensive index and scoring
-            {
-                console.log(`🔍 Running comprehensive search for: "${search}"`);
-                const searchWords = search.split(' ').filter(word => word.length > 1);
+            // Lazy-load LLM matcher on first use
+            if (!this.llmMatcher) {
+                this.llmMatcher = new LLMServiceMatcher();
+            }
+            
+            // Try LLM-powered matching first (if available)
+            if (this.llmMatcher && this.llmMatcher.isAvailable()) {
+                console.log(`🤖 Using LLM-powered service matching for: "${searchTerm}"`);
                 
-                // Score each service based on relevance with improved exact matching
-                const scoredServices = services.map(service => {
-                    const title = service.title.toLowerCase();
-                    const searchText = service.searchText || title;
-                    let score = 0;
+                try {
+                    // Try to get top 3 matches first for better accuracy
+                    const llmTopMatches = await this.llmMatcher.getTopMatches(searchTerm, services, 3);
                     
-                    // 1. EXACT title match (highest priority)
-                    if (title === search) {
-                        score += 10000;
-                        console.log(`🎯 EXACT MATCH: "${service.title}" for search "${search}"`);
+                    if (llmTopMatches.success && llmTopMatches.services && llmTopMatches.services.length > 0) {
+                        console.log(`✅ LLM found ${llmTopMatches.services.length} top matches for: "${searchTerm}"`);
+                        llmTopMatches.services.forEach((service, i) => {
+                            console.log(`  ${i + 1}. ${service.title} (${service.categoryTitle || service.categoryName})`);
+                        });
+                        
+                        return {
+                            success: true,
+                            found: llmTopMatches.services.length,
+                            searchTerm: searchTerm,
+                            matchMethod: 'llm',
+                            confidence: 'high',
+                            services: llmTopMatches.services.map(service => ({
+                                serviceId: service.serviceId,
+                                name: service.title,
+                                price: service.price,
+                                duration: service.durationString || service.duration,
+                                category: service.categoryTitle || service.categoryName,
+                                description: service.description,
+                                priceNumber: service.priceNumber
+                            }))
+                        };
                     }
                     
-                    // 2. Exact phrase match in title (very high priority)
-                    if (title.includes(search) && search.length > 5) {
-                        score += 5000;
-                        console.log(`📍 EXACT PHRASE: "${service.title}" contains "${search}"`);
+                    // Fallback to single match if top matches failed
+                    const llmResult = await this.llmMatcher.matchService(searchTerm, services);
+                    
+                    if (llmResult.success && llmResult.service) {
+                        console.log(`✅ LLM single match: "${searchTerm}" → "${llmResult.service.title}"`);
+                        
+                        return {
+                            success: true,
+                            found: 1,
+                            searchTerm: searchTerm,
+                            matchMethod: 'llm',
+                            confidence: llmResult.confidence,
+                            services: [{
+                                serviceId: llmResult.service.serviceId,
+                                name: llmResult.service.title,
+                                price: llmResult.service.price,
+                                duration: llmResult.service.durationString || llmResult.service.duration,
+                                category: llmResult.service.categoryTitle || llmResult.service.categoryName,
+                                description: llmResult.service.description,
+                                priceNumber: llmResult.service.priceNumber
+                            }]
+                        };
+                    } else {
+                        console.log(`❌ LLM could not match service for: "${searchTerm}", falling back to traditional search`);
                     }
-                    
-                    // 3. All search words present in exact order in title
-                    if (searchWords.length > 1) {
-                        const searchWordsInTitle = searchWords.every(word => title.includes(word));
-                        if (searchWordsInTitle) {
-                            // Check if words appear in the same order
-                            let currentIndex = 0;
-                            let wordsInOrder = true;
-                            for (const word of searchWords) {
-                                const wordIndex = title.indexOf(word, currentIndex);
-                                if (wordIndex === -1) {
-                                    wordsInOrder = false;
-                                    break;
-                                }
-                                currentIndex = wordIndex + word.length;
-                            }
-                            
-                            if (wordsInOrder) {
-                                score += 3000;
-                                console.log(`🔗 WORDS IN ORDER: "${service.title}" has all words in order`);
-                            } else {
-                                score += 1000;
-                                console.log(`📋 ALL WORDS: "${service.title}" has all words`);
-                            }
-                        }
-                    }
-                    
-                    // 4. Title starts with search
-                    if (title.startsWith(search)) {
-                        score += 500;
-                    }
-                    
-                    // 5. Title contains search phrase (for shorter searches)
-                    if (title.includes(search) && search.length <= 5) {
-                        score += 300;
-                    }
-                    
-                    // 6. Search text contains all words (includes category and description)
-                    const searchTextWordsMatch = searchWords.every(word => searchText.includes(word));
-                    if (searchTextWordsMatch && searchWords.length > 1) {
-                        score += 100;
-                    }
-                    
-                    // 7. Individual word matches in title (lower priority)
-                    searchWords.forEach(word => {
-                        if (title.includes(word)) {
-                            score += 10;
-                        }
-                    });
-                    
-                    // 8. Individual word matches in searchText only
-                    searchWords.forEach(word => {
-                        if (searchText.includes(word) && !title.includes(word)) {
-                            score += 1;
-                        }
-                    });
-                    
-                    return { ...service, score };
-                }).filter(service => service.score > 0);
+                } catch (error) {
+                    console.error('❌ LLM matching error:', error.message);
+                    console.log('🔄 Falling back to traditional search algorithm');
+                }
+            } else {
+                console.log('⚠️ LLM matcher not available (missing OpenAI API key), using traditional search');
+            }
+
+            // Fallback to traditional search with simplified scoring
+            console.log(`🔍 Running fallback search for: "${search}"`);
+            const searchWords = search.split(' ').filter(word => word.length > 1);
+            
+            // Simplified scoring for fallback
+            const scoredServices = services.map(service => {
+                const title = service.title.toLowerCase();
+                const searchText = service.searchText || title;
+                let score = 0;
                 
-                // Sort by score (highest first) and limit results
-                results = scoredServices
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 10);
+                // Exact title match
+                if (title === search) {
+                    score += 1000;
+                }
                 
-                console.log(`🎯 Found ${results.length} matches. Top results:`);
-                results.slice(0, 3).forEach(s => {
-                    console.log(`  - ${s.title} (${s.categoryName}) [score: ${s.score}]`);
+                // Title contains search phrase
+                if (title.includes(search)) {
+                    score += 500;
+                }
+                
+                // All words present
+                if (searchWords.length > 1 && searchWords.every(word => title.includes(word))) {
+                    score += 300;
+                }
+                
+                // Individual word matches
+                searchWords.forEach(word => {
+                    if (title.includes(word)) {
+                        score += 10;
+                    }
                 });
+                
+                return { ...service, score };
+            }).filter(service => service.score > 0);
+            
+            // Sort and limit results
+            const results = scoredServices
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10);
+            
+            console.log(`🎯 Fallback search found ${results.length} matches for "${searchTerm}"`);
+            if (results.length > 0) {
+                console.log(`Top result: ${results[0].title} (${results[0].categoryName})`);
             }
-
-            // Remove duplicates by service name and price
-            const uniqueResults = [];
-            const seen = new Set();
-            
-            for (const service of results) {
-                const key = `${service.title}-${service.priceNumber}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueResults.push(service);
-                }
-            }
-            
-            results = uniqueResults;
-
-            // Sort by priority and price
-            results.sort((a, b) => {
-                // First by priority (lower number = higher priority)
-                if (a.priority !== b.priority) {
-                    return (a.priority || 999) - (b.priority || 999);
-                }
-                // Then by price
-                return (a.priceNumber || 0) - (b.priceNumber || 0);
-            });
-
-            // Limit results to top 10
-            results = results.slice(0, 10);
-            
-            console.log(`🎯 Final search results for "${searchTerm}": ${results.map(r => r.title).join(', ')}`);
 
             return {
                 success: true,
                 found: results.length,
                 searchTerm: searchTerm,
+                matchMethod: 'traditional',
                 services: results.map(service => ({
                     serviceId: service.serviceId,
                     name: service.title,

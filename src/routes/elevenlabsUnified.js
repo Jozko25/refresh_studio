@@ -127,6 +127,38 @@ router.get('/debug/crawl-results', async (req, res) => {
     }
 });
 
+// Debug search scoring
+router.get('/debug/search/:searchTerm', async (req, res) => {
+    try {
+        const { searchTerm } = req.params;
+        const searchResult = await BookioDirectService.searchServices(searchTerm);
+        
+        if (searchResult.success) {
+            res.json({
+                success: true,
+                searchTerm: searchTerm,
+                totalResults: searchResult.found,
+                services: searchResult.services.map(s => ({
+                    title: s.title,
+                    price: s.price,
+                    category: s.categoryName,
+                    score: s.score || 0
+                }))
+            });
+        } else {
+            res.json({
+                success: false,
+                error: searchResult.message
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
+});
+
 // Get all available services organized by category
 router.get('/services', async (req, res) => {
     try {

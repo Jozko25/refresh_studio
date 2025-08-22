@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+
+// Load environment variables FIRST before importing routes
+dotenv.config();
+
 import bookingRoutes from './routes/booking.js';
 import refreshClinicRoutes from './routes/refreshClinic.js';
 import slotsRoutes from './routes/slots.js';
@@ -12,8 +16,6 @@ import widgetFlowRoutes from './routes/widgetFlow.js';
 import elevenlabsRoutes from './routes/elevenlabs.js';
 import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import { errorHandler } from './middleware/errorHandler.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
