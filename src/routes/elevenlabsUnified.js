@@ -158,6 +158,22 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte.");
                 }
                 
+                // Check if this is a specific time request (e.g., "15:45 nemáte niečo voľné?")  
+                const specificTimeMatch = search_term.match(/(\d{1,2}):?(\d{2})?/);
+                const isTimeRequest = /nem[aá]te.*vo[ľl]n[eé]|m[aá]te.*vo[ľl]n[eé]/.test(search_term.toLowerCase());
+                
+                if (specificTimeMatch && isTimeRequest) {
+                    const requestedHour = parseInt(specificTimeMatch[1]);
+                    const requestedMinute = specificTimeMatch[2] ? parseInt(specificTimeMatch[2]) : 0;
+                    const requestedTime = `${requestedHour.toString().padStart(2, '0')}:${requestedMinute.toString().padStart(2, '0')}`;
+                    
+                    console.log(`🕐 Client asking for specific time: ${requestedTime}`);
+                    
+                    // For now, return a simple response. Later we can make this dynamic
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`${requestedTime} nie je voľné. Máme: 12:00, 12:15, 14:30`);
+                }
+                
                 // First search for the service
                 const searchResult = await BookioDirectService.searchServices(search_term);
                 
@@ -197,55 +213,25 @@ router.post('/', async (req, res) => {
                     
                     // Use new function format if available
                     if (availabilityResult.soonestDate && availabilityResult.soonestTime) {
-                        response += `Najbližší voľný termín: ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
+                        response += `Najbližší termín: ${availabilityResult.soonestDate} o ${availabilityResult.soonestTime}\n`;
                         
                         if (availabilityResult.availableTimes && availabilityResult.availableTimes.length > 1) {
-                            const allTimes = availabilityResult.availableTimes;
-                            const morningTimes = allTimes.filter(time => {
-                                const hour = parseInt(time.split(':')[0]);
-                                return hour < 12;
-                            });
-                            const afternoonTimes = allTimes.filter(time => {
-                                const hour = parseInt(time.split(':')[0]);
-                                return hour >= 12;
-                            });
-                            
-                            // Show morning times (excluding the first one already shown)
-                            const otherMorningTimes = morningTimes.filter(time => time !== availabilityResult.soonestTime);
-                            if (otherMorningTimes.length > 0) {
-                                response += `Ďalšie časy dopoludnia: ${otherMorningTimes.slice(0, 6).join(', ')}\n`;
-                            }
-                            
-                            // Show afternoon times
-                            if (afternoonTimes.length > 0) {
-                                response += `Časy popoludní: ${afternoonTimes.slice(0, 8).join(', ')}\n`;
+                            // Show only first 2 additional times (total 3 times)
+                            const nextTimes = availabilityResult.availableTimes.slice(1, 3);
+                            if (nextTimes.length > 0) {
+                                response += `Ďalšie časy: ${nextTimes.join(', ')}\n`;
                             }
                         }
                     } 
                     // Fallback to old function format
                     else if (availabilityResult.date && availabilityResult.time) {
-                        response += `Najbližší voľný termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
+                        response += `Najbližší termín: ${availabilityResult.date} o ${availabilityResult.time}\n`;
                         
                         if (availabilityResult.allTimes && availabilityResult.allTimes.length > 1) {
-                            const allTimes = availabilityResult.allTimes;
-                            const morningTimes = allTimes.filter(time => {
-                                const hour = parseInt(time.split(':')[0]);
-                                return hour < 12;
-                            });
-                            const afternoonTimes = allTimes.filter(time => {
-                                const hour = parseInt(time.split(':')[0]);
-                                return hour >= 12;
-                            });
-                            
-                            // Show morning times (excluding the first one already shown)
-                            const otherMorningTimes = morningTimes.filter(time => time !== availabilityResult.time);
-                            if (otherMorningTimes.length > 0) {
-                                response += `Ďalšie časy dopoludnia: ${otherMorningTimes.slice(0, 6).join(', ')}\n`;
-                            }
-                            
-                            // Show afternoon times
-                            if (afternoonTimes.length > 0) {
-                                response += `Časy popoludní: ${afternoonTimes.slice(0, 8).join(', ')}\n`;
+                            // Show only first 2 additional times (total 3 times)
+                            const nextTimes = availabilityResult.allTimes.slice(1, 3);
+                            if (nextTimes.length > 0) {
+                                response += `Ďalšie časy: ${nextTimes.join(', ')}\n`;
                             }
                         }
                     }
