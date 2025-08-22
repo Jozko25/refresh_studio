@@ -3,6 +3,7 @@ import CallFlowService from '../services/callFlowService.js';
 import SlotService from '../services/slotService.js';
 import WidgetFlowService from '../services/widgetFlowService.js';
 import BookioDirectService from '../services/bookioDirectService.js';
+import BookioApiCrawler from '../services/bookioApiCrawler.js';
 
 const router = express.Router();
 
@@ -66,6 +67,59 @@ router.post('/debug/rebuild-services', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Manual rebuild failed:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
+});
+
+// Comprehensive API crawler endpoint
+router.post('/debug/crawl-api', async (req, res) => {
+    try {
+        console.log('🕷️ Starting comprehensive API crawl...');
+        const crawler = new BookioApiCrawler();
+        const results = await crawler.crawlAll();
+        
+        const stats = crawler.getStats();
+        
+        res.json({
+            success: true,
+            message: `API crawl completed successfully`,
+            crawlTime: results.crawlTime,
+            totalCategories: results.totalCategories,
+            totalServices: results.totalServices,
+            stats: stats.servicesByCategory
+        });
+    } catch (error) {
+        console.error('❌ API crawl failed:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
+});
+
+// Get crawl results
+router.get('/debug/crawl-results', async (req, res) => {
+    try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        const dataDir = path.join(process.cwd(), 'data');
+        const filepath = path.join(dataDir, 'bookio-crawl-results.json');
+        
+        try {
+            const data = await fs.readFile(filepath, 'utf8');
+            const results = JSON.parse(data);
+            res.json(results);
+        } catch (fileError) {
+            res.status(404).json({
+                success: false,
+                message: 'No crawl results found. Run /debug/crawl-api first.'
+            });
+        }
+    } catch (error) {
         res.status(500).json({ 
             success: false,
             error: error.message 
