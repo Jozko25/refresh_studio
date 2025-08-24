@@ -407,59 +407,66 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem lokáciu. Povedzte 'Bratislava' alebo 'Pezinok'.");
                 }
                 
-                // TEMPORARY: Use known working service ID for testing
-                let serviceId;
-                let serviceName = "HYDRAFACIAL ZÁKLAD";
-                let servicePrice = "95.00 €";
-                let serviceDuration = "45min.";
+                // Use proper search functionality that's already implemented
+                const searchWords = search_term.toLowerCase().split(' ').filter(word => 
+                    word.length > 2 && !['bratislava', 'pezinok'].includes(word)
+                );
                 
-                // Map common search terms to known working service IDs
-                const searchLower = search_term.toLowerCase();
-                if (searchLower.includes('hydrafacial jlo') || searchLower.includes('j.lo')) {
-                    serviceId = 127325;
-                    serviceName = "Hydrafacial J.Lo™";
-                    servicePrice = "145.00 €";
-                    serviceDuration = "1h";
-                } else if (searchLower.includes('hydrafacial perk lip') || searchLower.includes('perk lip')) {
-                    serviceId = 125850;
-                    serviceName = "HYDRAFACIAL PERK LIP";
-                    servicePrice = "55.00 €";
-                    serviceDuration = "20min.";
-                } else if (searchLower.includes('hydrafacial platinum') || searchLower.includes('platinum')) {
-                    serviceId = 85617;
-                    serviceName = "HYDRAFACIAL PLATINUM";
-                    servicePrice = "125.00 €";
-                    serviceDuration = "1h";
-                } else {
-                    // Default to HYDRAFACIAL ZÁKLAD
-                    serviceId = 125863;
-                }
+                console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"`);
                 
-                // Get real availability using the working service ID
-                const slotResult = await BookioDirectService.findSoonestSlot(serviceId, worker_id);
+                // Search for the service using BookioDirectService
+                const searchResult = await BookioDirectService.searchServices(searchWords.join(' '));
+                
+                console.log(`📋 Search result:`, {
+                    success: searchResult.success,
+                    found: searchResult.found,
+                    services: searchResult.services?.map(s => ({
+                        serviceId: s.serviceId,
+                        name: s.name,
+                        price: s.price
+                    }))
+                });
+                
+                if (searchResult.success && searchResult.found > 0) {
+                    const service = searchResult.services[0];
+                    console.log(`🎯 Using service:`, service);
                     
-                response = `Služba: ${serviceName}\n`;
-                response += `Cena: ${servicePrice}, Trvanie: ${serviceDuration}\n`;
-                response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava - Lazaretská 13' : 'Pezinok'}\n\n`;
-                
-                // Check if we have real availability
-                if (slotResult.success && slotResult.soonestDate) {
-                    response += `Najbližší termín: ${slotResult.soonestDate} o ${slotResult.soonestTime}`;
+                    // Get real availability using the found service ID
+                    const slotResult = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
                     
-                    // Add alternative times
-                    if (slotResult.availableTimes && slotResult.availableTimes.length > 1) {
-                        const alternatives = slotResult.availableTimes.slice(1, 3);
-                        response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                    console.log(`⏰ Availability result:`, {
+                        success: slotResult.success,
+                        soonestDate: slotResult.soonestDate,
+                        soonestTime: slotResult.soonestTime,
+                        message: slotResult.message
+                    });
+                    
+                    response = `Služba: ${service.name}\n`;
+                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                    response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava - Lazaretská 13' : 'Pezinok'}\n\n`;
+                    
+                    // Check if we have real availability
+                    if (slotResult.success && slotResult.soonestDate) {
+                        response += `Najbližší termín: ${slotResult.soonestDate} o ${slotResult.soonestTime}`;
+                        
+                        // Add alternative times
+                        if (slotResult.availableTimes && slotResult.availableTimes.length > 1) {
+                            const alternatives = slotResult.availableTimes.slice(1, 3);
+                            response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                        }
+                        
+                        // Add next day info if available
+                        if (slotResult.daysFromNow === 0) {
+                            response = response.replace(slotResult.soonestDate, 'dnes');
+                        } else if (slotResult.daysFromNow === 1) {
+                            response = response.replace(slotResult.soonestDate, 'zajtra');
+                        }
+                    } else {
+                        response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                     }
-                    
-                    // Add next day info if available
-                    if (slotResult.daysFromNow === 0) {
-                        response = response.replace(slotResult.soonestDate, 'dnes');
-                    } else if (slotResult.daysFromNow === 1) {
-                        response = response.replace(slotResult.soonestDate, 'zajtra');
-                    }
                 } else {
-                    response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
+                    console.log(`❌ No services found for search: "${searchWords.join(' ')}"`);
+                    response = "Ľutujem, nenašla som požadovanú službu.";
                 }
                 
                 res.set('Content-Type', 'text/plain');
