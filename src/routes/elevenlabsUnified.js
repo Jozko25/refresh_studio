@@ -7,6 +7,7 @@ import BookioDirectService from '../services/bookioDirectService.js';
 import BookioApiCrawler from '../services/bookioApiCrawler.js';
 import TokenAnalyzer from '../services/tokenAnalyzer.js';
 import LocationBookioService from '../services/locationBookioService.js';
+import RefreshClinicService from '../services/refreshClinicService.js';
 
 const router = express.Router();
 
@@ -410,30 +411,33 @@ router.post('/', async (req, res) => {
                 const fallbackService = search_term.includes('laser') || search_term.includes('epilac') ? 
                     'Laserová epilácia' : 'HYDRAFACIAL';
                 
-                // Get actual results from original BookioDirectService (which works)
-                const originalResult = await BookioDirectService.searchServices(fallbackService);
+                // Get actual results from RefreshClinicService (which has working availability)
+                const originalResult = await RefreshClinicService.searchServices(search_term);
                 if (originalResult.success && originalResult.found > 0) {
                     const service = originalResult.services[0];
-                    const slotResult = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
+                    const slotResult = await RefreshClinicService.getServiceAvailability(service.id);
                     
                     response = `Služba: ${service.name}\n`;
-                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
-                    response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava' : 'Pezinok'}\n\n`;
+                    response += `Cena: ${service.formattedPrice}, Trvanie: ${service.duration}min.\n`;
+                    response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava' : 'Pezinok'} - Lazaretská 13\n\n`;
                     
-                    if (slotResult.success && slotResult.found) {
-                        if (slotResult.daysFromNow === 0) {
-                            response += `Najbližší termín: dnes o ${slotResult.time}`;
-                        } else if (slotResult.daysFromNow === 1) {
-                            response += `Najbližší termín: zajtra (${slotResult.date}) o ${slotResult.time}`;
-                        } else {
-                            response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
-                        }
+                    // Check if we have available times
+                    if (slotResult.success && slotResult.times && slotResult.times.all) {
+                        const availableTimes = slotResult.times.all.filter(time => time.available);
                         
-                        if (slotResult.alternativeSlots.length > 0) {
-                            response += `\nĎalšie časy: ${slotResult.alternativeSlots.slice(0, 2).join(', ')}`;
+                        if (availableTimes.length > 0) {
+                            response += `Najbližší termín: dnes o ${availableTimes[0].name}`;
+                            
+                            // Add alternative times
+                            if (availableTimes.length > 1) {
+                                const alternatives = availableTimes.slice(1, 3).map(time => time.name);
+                                response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                            }
+                        } else {
+                            response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                         }
                     } else {
-                        response += "Momentálne nie sú dostupné žiadne voľné termíny.";
+                        response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                     }
                 } else {
                     response = `Ľutujem, nenašla som službu pre ${locationMatch === 'bratislava' ? 'Bratislavu' : 'Pezinok'}.`;
