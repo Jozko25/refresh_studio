@@ -385,7 +385,8 @@ class BookioDirectService {
         try {
             const response = await axios.post(`${this.baseURL}/workers`, {
                 serviceId: parseInt(serviceId),
-                lang: 'sk'
+                lang: 'sk',
+                facility: this.facility
             }, { headers: this.headers });
 
             return response.data.data || [];
@@ -407,7 +408,8 @@ class BookioDirectService {
                 addons: [],
                 count: 1,
                 participantsCount: 0,
-                lang: 'sk'
+                lang: 'sk',
+                facility: this.facility
             }, { headers: this.headers });
 
             return response.data.data || {};
@@ -437,7 +439,8 @@ class BookioDirectService {
                 addons: [],
                 count: 1,
                 participantsCount: 0,
-                lang: 'sk'
+                lang: 'sk',
+                facility: this.facility
             }, { headers: this.headers });
 
             return response.data.data || {};
@@ -666,7 +669,8 @@ class BookioDirectService {
             addons: [],
             count: 1,
             participantsCount: 0,
-            lang: 'sk'
+            lang: 'sk',
+            facility: this.facility
         }, { headers: this.headers });
 
         return response.data.data || {};
