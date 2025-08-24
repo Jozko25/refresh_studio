@@ -36,12 +36,28 @@ app.use(morgan('combined'));
 app.use(limiter);
 app.use(express.json());
 
-// Health check endpoint
+// Health check endpoint - Railway compatible
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    service: 'Bookio Webhook API'
+    service: 'Bookio Webhook API',
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Root endpoint for Railway
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: '🚀 Bookio Webhook API with Email Notifications',
+    status: 'Active',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      booking: '/api/booking/create',
+      testEmail: '/api/booking/test-email'
+    }
   });
 });
 
@@ -65,17 +81,17 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Bookio Webhook API server running on port ${PORT}`);
-  console.log(`📋 Health check: http://localhost:${PORT}/health`);
+  console.log(`📋 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`🔗 Original Facility: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
   console.log(`🏥 REFRESH Clinic: refresh-laserove-a-esteticke-studio-zu0yxr5l`);
-  console.log(`✨ REFRESH API: http://localhost:${PORT}/api/refresh-clinic/services`);
-  console.log(`🎯 Slots API: http://localhost:${PORT}/api/slots/soonest/[serviceId]`);
-  console.log(`📞 Call Flow: http://localhost:${PORT}/api/call/services-overview`);
-  console.log(`🎨 Widget Flow: http://localhost:${PORT}/api/widget/quick-lookup/[search]`);
-  console.log(`🤖 ElevenLabs: http://localhost:${PORT}/api/elevenlabs/[tool_name]`);
-  console.log(`📅 Booking API: http://localhost:${PORT}/api/booking/create`);
+  console.log(`✨ REFRESH API: http://0.0.0.0:${PORT}/api/refresh-clinic/services`);
+  console.log(`🎯 Slots API: http://0.0.0.0:${PORT}/api/slots/soonest/[serviceId]`);
+  console.log(`📞 Call Flow: http://0.0.0.0:${PORT}/api/call/services-overview`);
+  console.log(`🎨 Widget Flow: http://0.0.0.0:${PORT}/api/widget/quick-lookup/[search]`);
+  console.log(`🤖 ElevenLabs: http://0.0.0.0:${PORT}/api/elevenlabs/[tool_name]`);
+  console.log(`📅 Booking API: http://0.0.0.0:${PORT}/api/booking/create`);
 });
 
 export default app;

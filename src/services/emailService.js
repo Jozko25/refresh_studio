@@ -7,18 +7,24 @@ import nodemailer from 'nodemailer';
 class EmailService {
     constructor() {
         this.notificationEmail = 'janko.tank.poi@gmail.com';
-        this.initEmailService();
+        // Initialize email service asynchronously to not block startup
+        this.initEmailService().catch(error => {
+            console.error('❌ Email service initialization failed:', error);
+            this.emailTransporter = null;
+        });
     }
 
     /**
      * Initialize email service
      */
-    initEmailService() {
+    async initEmailService() {
         try {
-            // Debug environment variables
-            console.log('📧 Email config debug:');
-            console.log('EMAIL_USER:', process.env.EMAIL_USER || 'NOT SET');
-            console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? `${process.env.EMAIL_PASS.substring(0, 4)}****` : 'NOT SET');
+            // Debug environment variables in development
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('📧 Email config debug:');
+                console.log('EMAIL_USER:', process.env.EMAIL_USER || 'NOT SET');
+                console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? `${process.env.EMAIL_PASS.substring(0, 4)}****` : 'NOT SET');
+            }
             
             this.emailTransporter = nodemailer.createTransport({
                 service: 'gmail',
@@ -30,10 +36,10 @@ class EmailService {
             
             console.log('📧 Email service initialized with Gmail');
         } catch (error) {
-            console.error('❌ Email service failed to initialize:', error);
+            console.warn('⚠️ Gmail service failed, using fallback:', error.message);
             
             // Fallback to ethereal email for testing
-            this.initTestEmailService();
+            await this.initTestEmailService();
         }
     }
 
