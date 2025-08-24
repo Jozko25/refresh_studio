@@ -433,8 +433,12 @@ router.post('/', async (req, res) => {
                     const service = searchResult.services[0];
                     console.log(`🎯 Using service:`, service);
                     
-                    // Get real availability using the found service ID
-                    const slotResult = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
+                    // Get real availability using the same method as the working booking endpoint
+                    const slotResult = await BookioDirectService.getAvailableTimesAndDays(
+                        service.serviceId,
+                        worker_id || -1,
+                        3 // Check up to 3 months ahead
+                    );
                     
                     console.log(`⏰ Availability result:`, {
                         success: slotResult.success,
