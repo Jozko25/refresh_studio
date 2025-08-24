@@ -434,18 +434,21 @@ router.post('/', async (req, res) => {
                     console.log(`🎯 Using service:`, service);
                     
                     // Get real availability using the same method as the working booking endpoint
-                    const slotResult = await BookioDirectService.getAvailableTimesAndDays(
-                        service.serviceId,
-                        worker_id || -1,
-                        3 // Check up to 3 months ahead
-                    );
+                    console.log(`🔍 Calling getAvailableTimesAndDays with serviceId: ${service.serviceId}, worker_id: ${worker_id || -1}`);
                     
-                    console.log(`⏰ Availability result:`, {
-                        success: slotResult.success,
-                        soonestDate: slotResult.soonestDate,
-                        soonestTime: slotResult.soonestTime,
-                        message: slotResult.message
-                    });
+                    let slotResult;
+                    try {
+                        slotResult = await BookioDirectService.getAvailableTimesAndDays(
+                            service.serviceId,
+                            worker_id || -1,
+                            3 // Check up to 3 months ahead
+                        );
+                        
+                        console.log(`⏰ Availability result:`, JSON.stringify(slotResult, null, 2));
+                    } catch (error) {
+                        console.error(`❌ Error calling getAvailableTimesAndDays:`, error);
+                        slotResult = { success: false, error: error.message };
+                    }
                     
                     response = `Služba: ${service.name}\n`;
                     response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
