@@ -430,8 +430,30 @@ router.post('/', async (req, res) => {
                 });
                 
                 if (searchResult.success && searchResult.found > 0) {
-                    const service = searchResult.services[0];
-                    console.log(`🎯 Using service:`, service);
+                    // Smart service selection - prefer general services over age-specific ones
+                    let service = searchResult.services[0]; // default fallback
+                    
+                    // Look for general/adult services when not specifically requesting youth services
+                    const ageSpecificKeywords = ['mládež', 'mladých', 'do 18', 'do 20', 'deti'];
+                    const hasAgeRequest = search_term.toLowerCase().split(' ').some(word => 
+                        ageSpecificKeywords.some(keyword => word.includes(keyword))
+                    );
+                    
+                    if (!hasAgeRequest) {
+                        // Prefer services without age restrictions (general adult services)
+                        const generalService = searchResult.services.find(s => 
+                            !ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
+                        );
+                        
+                        if (generalService) {
+                            service = generalService;
+                            console.log(`🎯 Selected general service over age-specific:`, service);
+                        } else {
+                            console.log(`🎯 Using first available service:`, service);
+                        }
+                    } else {
+                        console.log(`🎯 Age-specific request, using first match:`, service);
+                    }
                     
                     // Get real availability using the same method as the working booking endpoint
                     console.log(`🔍 Calling getAvailableTimesAndDays with serviceId: ${service.serviceId}, worker_id: ${worker_id || -1}`);
