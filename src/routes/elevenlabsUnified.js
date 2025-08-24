@@ -407,66 +407,44 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem lokáciu. Povedzte 'Bratislava' alebo 'Pezinok'.");
                 }
                 
-                // Use the current service (fallback to default one) for the specific location
-                const fallbackService = search_term.includes('laser') || search_term.includes('epilac') ? 
-                    'Laserová epilácia' : 'HYDRAFACIAL';
+                // Use BookioDirectService which now has working real data
+                const searchWords = search_term.toLowerCase().split(' ').filter(word => 
+                    word.length > 2 && !['bratislava', 'pezinok'].includes(word)
+                );
                 
-                // Get available services directly from the working endpoint
-                try {
-                    const servicesResponse = await axios.get('https://refreshstudio-production.up.railway.app/api/refresh-clinic/services');
-                    const allServices = servicesResponse.data.services;
+                // Search for the service using BookioDirectService
+                const searchResult = await BookioDirectService.searchServices(searchWords.join(' '));
+                
+                if (searchResult.success && searchResult.found > 0) {
+                    const service = searchResult.services[0];
                     
-                    // Find matching service
-                    const searchLower = search_term.toLowerCase();
-                    let matchedService = null;
+                    // Get real availability using the fixed BookioDirectService
+                    const slotResult = await BookioDirectService.findSoonestSlot(service.serviceId, worker_id);
                     
-                    // Try to find exact matches first
-                    for (const service of allServices) {
-                        const serviceLower = service.name.toLowerCase();
-                        if (serviceLower.includes(searchLower) || 
-                            searchLower.includes(serviceLower.split(' ')[0].toLowerCase())) {
-                            matchedService = service;
-                            break;
-                        }
-                    }
+                    response = `Služba: ${service.name}\n`;
+                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                    response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava - Lazaretská 13' : 'Pezinok'}\n\n`;
                     
-                    // Fallback to any hydrafacial if no specific match
-                    if (!matchedService) {
-                        matchedService = allServices.find(s => s.category === 'hydrafacial') || allServices[0];
-                    }
-                    
-                    if (matchedService) {
-                        // Get availability for this service
-                        const availabilityResponse = await axios.get(`https://refreshstudio-production.up.railway.app/api/refresh-clinic/services/${matchedService.id}/availability`);
-                        const slotResult = availabilityResponse.data;
-                    
-                        response = `Služba: ${matchedService.name}\n`;
-                        response += `Cena: ${matchedService.formattedPrice}, Trvanie: ${matchedService.duration}min.\n`;
-                        response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava' : 'Pezinok'} - Lazaretská 13\n\n`;
+                    // Check if we have real availability
+                    if (slotResult.success && slotResult.soonestDate) {
+                        response += `Najbližší termín: ${slotResult.soonestDate} o ${slotResult.soonestTime}`;
                         
-                        // Check if we have available times
-                        if (slotResult.success && slotResult.times && slotResult.times.all) {
-                            const availableTimes = slotResult.times.all.filter(time => time.available);
-                            
-                            if (availableTimes.length > 0) {
-                                response += `Najbližší termín: dnes o ${availableTimes[0].name}`;
-                                
-                                // Add alternative times
-                                if (availableTimes.length > 1) {
-                                    const alternatives = availableTimes.slice(1, 3).map(time => time.name);
-                                    response += `\nĎalšie časy: ${alternatives.join(', ')}`;
-                                }
-                            } else {
-                                response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
-                            }
-                        } else {
-                            response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
+                        // Add alternative times
+                        if (slotResult.availableTimes && slotResult.availableTimes.length > 1) {
+                            const alternatives = slotResult.availableTimes.slice(1, 3);
+                            response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                        }
+                        
+                        // Add next day info if available
+                        if (slotResult.daysFromNow === 0) {
+                            response = response.replace(slotResult.soonestDate, 'dnes');
+                        } else if (slotResult.daysFromNow === 1) {
+                            response = response.replace(slotResult.soonestDate, 'zajtra');
                         }
                     } else {
-                        response = `Ľutujem, nenašla som službu pre ${locationMatch === 'bratislava' ? 'Bratislavu' : 'Pezinok'}.`;
+                        response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                     }
-                } catch (error) {
-                    console.error('Error fetching services:', error);
+                } else {
                     response = "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                 }
                 
