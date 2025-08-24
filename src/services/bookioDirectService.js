@@ -200,7 +200,7 @@ class BookioDirectService {
      */
     async searchServices(searchTerm) {
         try {
-            const services = await this.getServiceIndex();
+            const allServices = await this.getServiceIndex();
             const search = searchTerm.toLowerCase().trim();
             
             if (!search) {
@@ -210,7 +210,32 @@ class BookioDirectService {
                 };
             }
 
-            console.log(`🔍 Searching for: "${search}" among ${services.length} services`);
+            console.log(`🔍 Searching for: "${search}" among ${allServices.length} services`);
+            
+            // Filter services to prioritize regular pricing over sale items
+            // Unless user specifically asks for sale/discount/akcia
+            const isAskingForSale = search.includes('zľava') || search.includes('akcia') || search.includes('zlavy') || search.includes('discount');
+            
+            let services;
+            if (isAskingForSale) {
+                console.log(`💰 User specifically asking for sale items, including all services`);
+                services = allServices;
+            } else {
+                // Prioritize non-sale services: exclude AKCIA categories unless no alternatives exist
+                const regularServices = allServices.filter(service => 
+                    !service.categoryName.includes('AKCIA') && 
+                    !service.title.includes('zľava')
+                );
+                
+                // If we have regular services, use them. Otherwise fall back to all services
+                if (regularServices.length > 0) {
+                    console.log(`🏷️ Filtering out sale items: ${allServices.length} → ${regularServices.length} services`);
+                    services = regularServices;
+                } else {
+                    console.log(`⚠️ No regular services found, using all services including sales`);
+                    services = allServices;
+                }
+            }
 
             // Lazy-load LLM matcher on first use
             if (!this.llmMatcher) {
@@ -789,6 +814,7 @@ class BookioDirectService {
             };
         }
     }
+
 }
 
 export default new BookioDirectService();

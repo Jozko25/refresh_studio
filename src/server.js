@@ -8,13 +8,13 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST before importing routes
 dotenv.config();
 
-import bookingRoutes from './routes/booking.js';
 import refreshClinicRoutes from './routes/refreshClinic.js';
 import slotsRoutes from './routes/slots.js';
 import callFlowRoutes from './routes/callFlow.js';
 import widgetFlowRoutes from './routes/widgetFlow.js';
 import elevenlabsRoutes from './routes/elevenlabs.js';
 import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
+import bookingRoutes from './routes/booking.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -46,12 +46,12 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/booking', bookingRoutes);
 app.use('/api/refresh-clinic', refreshClinicRoutes);
 app.use('/api/slots', slotsRoutes);
 app.use('/api/call', callFlowRoutes);
 app.use('/api/widget', widgetFlowRoutes);
 app.use('/api/elevenlabs', elevenlabsUnifiedRoutes);
+app.use('/api/booking', bookingRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -75,6 +75,7 @@ app.listen(PORT, () => {
   console.log(`📞 Call Flow: http://localhost:${PORT}/api/call/services-overview`);
   console.log(`🎨 Widget Flow: http://localhost:${PORT}/api/widget/quick-lookup/[search]`);
   console.log(`🤖 ElevenLabs: http://localhost:${PORT}/api/elevenlabs/[tool_name]`);
+  console.log(`📅 Booking API: http://localhost:${PORT}/api/booking/create`);
 });
 
 export default app;

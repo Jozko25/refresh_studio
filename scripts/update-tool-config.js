@@ -28,7 +28,7 @@ async function main() {
                     properties: {
                         search_term: {
                             type: "string",
-                            description: "Service name, time request, or user query in Slovak (e.g. 'hydrafacial', 'Zuzka má aký termín', '15:15 máte voľné')",
+                            description: "Service name, time request, user query in Slovak (e.g. 'hydrafacial', 'Zuzka má aký termín', '15:15 máte voľné'), or booking data for confirm_booking (format: 'serviceId:XXX,workerId:YYY,date:DD.MM.YYYY,time:HH:MM,name:Full Name,email:email@domain.com')",
                             dynamic_variable: "",
                             constant_value: ""
                         },
@@ -40,7 +40,7 @@ async function main() {
                         },
                         tool_name: {
                             type: "string",
-                            description: "Operation type: 'quick_booking' (finds services/prices/times), 'get_services_overview' (lists available services), or 'get_opening_hours' (clinic hours/location)",
+                            description: "Operation type: 'quick_booking' (finds services/prices/times), 'get_services_overview' (lists available services), 'get_opening_hours' (clinic hours/location), or 'confirm_booking' (creates reservation with customer data)",
                             dynamic_variable: "",
                             constant_value: ""
                         }
