@@ -411,36 +411,63 @@ router.post('/', async (req, res) => {
                 const fallbackService = search_term.includes('laser') || search_term.includes('epilac') ? 
                     'Laserová epilácia' : 'HYDRAFACIAL';
                 
-                // Get actual results from RefreshClinicService (which has working availability)
-                const originalResult = await RefreshClinicService.searchServices(search_term);
-                if (originalResult.success && originalResult.found > 0) {
-                    const service = originalResult.services[0];
-                    const slotResult = await RefreshClinicService.getServiceAvailability(service.id);
+                // Get available services directly from the working endpoint
+                try {
+                    const servicesResponse = await axios.get('https://refreshstudio-production.up.railway.app/api/refresh-clinic/services');
+                    const allServices = servicesResponse.data.services;
                     
-                    response = `Služba: ${service.name}\n`;
-                    response += `Cena: ${service.formattedPrice}, Trvanie: ${service.duration}min.\n`;
-                    response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava' : 'Pezinok'} - Lazaretská 13\n\n`;
+                    // Find matching service
+                    const searchLower = search_term.toLowerCase();
+                    let matchedService = null;
                     
-                    // Check if we have available times
-                    if (slotResult.success && slotResult.times && slotResult.times.all) {
-                        const availableTimes = slotResult.times.all.filter(time => time.available);
+                    // Try to find exact matches first
+                    for (const service of allServices) {
+                        const serviceLower = service.name.toLowerCase();
+                        if (serviceLower.includes(searchLower) || 
+                            searchLower.includes(serviceLower.split(' ')[0].toLowerCase())) {
+                            matchedService = service;
+                            break;
+                        }
+                    }
+                    
+                    // Fallback to any hydrafacial if no specific match
+                    if (!matchedService) {
+                        matchedService = allServices.find(s => s.category === 'hydrafacial') || allServices[0];
+                    }
+                    
+                    if (matchedService) {
+                        // Get availability for this service
+                        const availabilityResponse = await axios.get(`https://refreshstudio-production.up.railway.app/api/refresh-clinic/services/${matchedService.id}/availability`);
+                        const slotResult = availabilityResponse.data;
+                    
+                        response = `Služba: ${matchedService.name}\n`;
+                        response += `Cena: ${matchedService.formattedPrice}, Trvanie: ${matchedService.duration}min.\n`;
+                        response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava' : 'Pezinok'} - Lazaretská 13\n\n`;
                         
-                        if (availableTimes.length > 0) {
-                            response += `Najbližší termín: dnes o ${availableTimes[0].name}`;
+                        // Check if we have available times
+                        if (slotResult.success && slotResult.times && slotResult.times.all) {
+                            const availableTimes = slotResult.times.all.filter(time => time.available);
                             
-                            // Add alternative times
-                            if (availableTimes.length > 1) {
-                                const alternatives = availableTimes.slice(1, 3).map(time => time.name);
-                                response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                            if (availableTimes.length > 0) {
+                                response += `Najbližší termín: dnes o ${availableTimes[0].name}`;
+                                
+                                // Add alternative times
+                                if (availableTimes.length > 1) {
+                                    const alternatives = availableTimes.slice(1, 3).map(time => time.name);
+                                    response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                                }
+                            } else {
+                                response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                             }
                         } else {
                             response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                         }
                     } else {
-                        response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
+                        response = `Ľutujem, nenašla som službu pre ${locationMatch === 'bratislava' ? 'Bratislavu' : 'Pezinok'}.`;
                     }
-                } else {
-                    response = `Ľutujem, nenašla som službu pre ${locationMatch === 'bratislava' ? 'Bratislavu' : 'Pezinok'}.`;
+                } catch (error) {
+                    console.error('Error fetching services:', error);
+                    response = "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
                 }
                 
                 res.set('Content-Type', 'text/plain');
