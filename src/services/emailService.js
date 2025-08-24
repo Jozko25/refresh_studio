@@ -71,22 +71,40 @@ class EmailService {
     /**
      * Send booking notification email
      */
-    async sendBookingNotification(bookingData, result, endpoint = '/api/booking/create') {
+    async sendBookingNotification(bookingData, result, endpoint = '/api/booking/create', location = 'bratislava') {
         if (!this.emailTransporter) {
             console.log('⚠️ Email service not available, skipping notification');
             return false;
         }
 
         try {
+            // Location info
+            const locationInfo = {
+                bratislava: {
+                    name: 'Bratislava',
+                    address: 'Lazaretská 13, Bratislava',
+                    widget_url: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                },
+                pezinok: {
+                    name: 'Pezinok',
+                    address: 'Pezinok',
+                    widget_url: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk'
+                }
+            };
+            
+            const currentLocation = locationInfo[location] || locationInfo.bratislava;
+            
             const emailContent = {
                 timestamp: new Date().toISOString(),
-                endpoint: endpoint,
-                booking_request: bookingData,
-                booking_result: result,
-                server_info: {
-                    environment: process.env.NODE_ENV || 'development',
-                    railway_environment: process.env.RAILWAY_ENVIRONMENT || 'local'
-                }
+                location: currentLocation,
+                service: bookingData.serviceName || 'Unknown service',
+                appointment_time: `${bookingData.date} o ${bookingData.hour}`,
+                customer: {
+                    name: `${bookingData.firstName} ${bookingData.lastName}`,
+                    email: bookingData.email,
+                    phone: bookingData.phone
+                },
+                booking_url: currentLocation.widget_url
             };
 
             const subject = result.success ? 
@@ -96,36 +114,32 @@ class EmailService {
             const mailOptions = {
                 from: process.env.EMAIL_USER || 'booking-notifications@refresh-studio.com',
                 to: this.notificationEmail,
-                subject: `🎯 ${subject}`,
+                subject: `🎯 ${subject} - ${currentLocation.name}`,
                 text: `Booking Notification\n\n${JSON.stringify(emailContent, null, 2)}`,
                 html: `
                     <h2>🎯 Booking Notification: ${result.success ? 'SUCCESS ✅' : 'FAILED ❌'}</h2>
                     
-                    <div style="background: ${result.success ? '#d4edda' : '#f8d7da'}; padding: 15px; border-radius: 5px; margin: 15px 0;">
-                        <h3>📊 Result:</h3>
-                        <p><strong>Success:</strong> ${result.success}</p>
-                        ${result.success ? `<p><strong>Order ID:</strong> ${result.order?.orderId || 'N/A'}</p>` : ''}
-                        <p><strong>Message:</strong> ${result.message || 'No message'}</p>
-                        ${result.errors ? `<p><strong>Errors:</strong> ${JSON.stringify(result.errors)}</p>` : ''}
+                    <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+                        <h3>📍 Location: ${currentLocation.name}</h3>
+                        <p><strong>Address:</strong> ${currentLocation.address}</p>
+                        <p><strong>Booking URL:</strong> <a href="${currentLocation.widget_url}">${currentLocation.widget_url}</a></p>
                     </div>
 
-                    <h3>📧 Booking Request:</h3>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
-                        <p><strong>Service ID:</strong> ${bookingData.serviceId}</p>
-                        <p><strong>Date:</strong> ${bookingData.date}</p>
-                        <p><strong>Time:</strong> ${bookingData.hour}</p>
-                        <p><strong>Name:</strong> ${bookingData.firstName} ${bookingData.lastName}</p>
-                        <p><strong>Email:</strong> ${bookingData.email}</p>
-                        <p><strong>Phone:</strong> ${bookingData.phone || 'N/A'}</p>
-                        ${bookingData.note ? `<p><strong>Note:</strong> ${bookingData.note}</p>` : ''}
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ff9800;">
+                        <h3>💼 Service Details</h3>
+                        <p><strong>Service:</strong> ${emailContent.service}</p>
+                        <p><strong>Appointment:</strong> ${emailContent.appointment_time}</p>
+                    </div>
+
+                    <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50;">
+                        <h3>👤 Customer Information</h3>
+                        <p><strong>Name:</strong> ${emailContent.customer.name}</p>
+                        <p><strong>Email:</strong> ${emailContent.customer.email}</p>
+                        <p><strong>Phone:</strong> ${emailContent.customer.phone || 'N/A'}</p>
                     </div>
                     
-                    <h3>🔍 Full JSON Data:</h3>
-                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px;">${JSON.stringify(emailContent, null, 2)}</pre>
-                    
-                    <hr>
+                    <hr style="margin: 30px 0;">
                     <p><small>Timestamp: ${emailContent.timestamp}</small></p>
-                    <p><small>Environment: ${emailContent.server_info.environment}</small></p>
                     <p><small>🚀 Refresh Studio Booking System</small></p>
                 `
             };

@@ -6,8 +6,25 @@ import WidgetFlowService from '../services/widgetFlowService.js';
 import BookioDirectService from '../services/bookioDirectService.js';
 import BookioApiCrawler from '../services/bookioApiCrawler.js';
 import TokenAnalyzer from '../services/tokenAnalyzer.js';
+import LocationBookioService from '../services/locationBookioService.js';
 
 const router = express.Router();
+
+/**
+ * Detect location from search term or return null if unclear
+ */
+function detectLocation(searchTerm, existingLocation = null) {
+    if (existingLocation) return existingLocation;
+    
+    const term = searchTerm.toLowerCase();
+    if (term.includes('bratislava') || term.includes('lazaretská')) {
+        return 'bratislava';
+    }
+    if (term.includes('pezinok')) {
+        return 'pezinok';
+    }
+    return null; // Location unclear, need to ask
+}
 
 /**
  * GET /api/elevenlabs/test
@@ -241,7 +258,7 @@ router.get('/', (req, res) => {
     res.json({
         success: true,
         message: "REFRESH clinic webhook is ready",
-        available_tools: ["search_service", "find_soonest_slot", "get_services_overview", "get_opening_hours"]
+        available_tools: ["quick_booking", "select_location", "search_service", "find_soonest_slot", "get_services_overview", "get_opening_hours"]
     });
 });
 
@@ -287,7 +304,7 @@ router.post('/', async (req, res) => {
             body: req.body
         });
 
-        let { tool_name, search_term, service_id, worker_id = -1, date, time } = req.body;
+        let { tool_name, search_term, service_id, worker_id = -1, date, time, location } = req.body;
 
         if (!tool_name) {
             console.log('❌ No tool_name provided, defaulting to get_services_overview');
@@ -301,13 +318,73 @@ router.post('/', async (req, res) => {
         let response;
 
         switch (tool_name) {
-            case 'quick_booking_DISABLED':
-                res.set('Content-Type', 'application/json');
-                return res.json({
-                    success: false,
-                    type: "booking_disabled",
-                    message: "Rezervácie nie sú momentálne dostupné"
-                });
+            case 'quick_booking':
+                if (!search_term) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
+                }
+                
+                // Detect or ask for location
+                const detectedLocation = detectLocation(search_term, location);
+                if (!detectedLocation) {
+                    response = `Našla som službu "${search_term}". V ktorom meste si želáte rezerváciu?\n\n`;
+                    response += `🏢 Bratislava - Lazaretská 13\n`;
+                    response += `🏢 Pezinok\n\n`;
+                    response += `Povedzte "Bratislava" alebo "Pezinok".`;
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+                
+                // Search for service in specific location
+                result = await LocationBookioService.searchServices(search_term, detectedLocation);
+                if (result.success && result.found > 0) {
+                    const service = result.services[0];
+                    
+                    // Find soonest slot for this location
+                    const slotResult = await LocationBookioService.findSoonestSlot(service.serviceId, detectedLocation, worker_id);
+                    
+                    response = `Služba: ${service.name}\n`;
+                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                    response += `Miesto: ${result.location}\n\n`;
+                    
+                    if (slotResult.success && slotResult.found) {
+                        if (slotResult.daysFromNow === 0) {
+                            response += `Najbližší termín: dnes o ${slotResult.time}`;
+                        } else if (slotResult.daysFromNow === 1) {
+                            response += `Najbližší termín: zajtra (${slotResult.date}) o ${slotResult.time}`;
+                        } else {
+                            response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
+                        }
+                        
+                        if (slotResult.alternativeSlots.length > 0) {
+                            response += `\nĎalšie časy: ${slotResult.alternativeSlots.slice(0, 2).join(', ')}`;
+                        }
+                    } else {
+                        response += "Momentálne nie sú dostupné žiadne voľné termíny.";
+                    }
+                } else {
+                    response = `Ľutujem, nenašla som službu "${search_term}" v ${detectedLocation === 'bratislava' ? 'Bratislave' : 'Pezinku'}. Skúste iný názov.`;
+                }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
+                break;
+
+            case 'select_location':
+                const requestedLocation = search_term ? detectLocation(search_term) : null;
+                if (requestedLocation) {
+                    const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
+                    response = `Vybrali ste ${locationInfo.name} - ${locationInfo.address}.\n\n`;
+                    response += `Akú službu si želáte rezervovať?`;
+                } else {
+                    response = `V ktorom meste si želáte rezerváciu?\n\n`;
+                    response += `🏢 Bratislava - Lazaretská 13\n`;
+                    response += `🏢 Pezinok\n\n`;
+                    response += `Povedzte "Bratislava" alebo "Pezinok".`;
+                }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'confirm_booking_DISABLED':
@@ -348,7 +425,18 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
                 }
                 
-                result = await BookioDirectService.searchServices(search_term);
+                // Detect or ask for location
+                const searchLocation = detectLocation(search_term, location);
+                if (!searchLocation) {
+                    response = `V ktorom meste hľadáte službu "${search_term}"?\n\n`;
+                    response += `🏢 Bratislava - Lazaretská 13\n`;
+                    response += `🏢 Pezinok\n\n`;
+                    response += `Povedzte "Bratislava" alebo "Pezinok".`;
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+                
+                result = await LocationBookioService.searchServices(search_term, searchLocation);
                 if (result.success && result.found > 0) {
                     if (result.found === 1) {
                         // Only one service found - provide details with worker info
@@ -418,6 +506,9 @@ router.post('/', async (req, res) => {
                 } else {
                     response = `Ľutujem, nenašla som službu "${search_term}". Skúste iný názov alebo sa spýtajte na naše hlavné služby.`;
                 }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'find_soonest_slot':
@@ -470,14 +561,15 @@ router.post('/', async (req, res) => {
                 } else {
                     response = "Ľutujem, v najbližších dňoch nie sú dostupné žiadne voľné termíny. Skúste neskôr alebo sa spýtajte na konkrétny dátum.";
                 }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'check_specific_slot':
                 if (!service_id || !date || !time) {
-                    return res.json({
-                        success: false,
-                        response: "Potrebujem vedieť ID služby, dátum a čas."
-                    });
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Potrebujem vedieť ID služby, dátum a čas.");
                 }
 
                 result = await SlotService.checkSlot(service_id, worker_id, date, time);
@@ -502,6 +594,9 @@ router.post('/', async (req, res) => {
                 } else {
                     response = "Nastala chyba pri kontrole termínu. Skúste to prosím znovu.";
                 }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'get_booking_info_DISABLED':
@@ -515,10 +610,8 @@ router.post('/', async (req, res) => {
 
             case 'quick_service_lookup':
                 if (!search_term) {
-                    return res.json({
-                        success: false,
-                        response: "Nerozumiem, akú službu hľadáte."
-                    });
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte.");
                 }
 
                 const lookupDate = date || "04.09.2025";
@@ -569,6 +662,9 @@ router.post('/', async (req, res) => {
                 } else {
                     response = `Ľutujem, nenašla som službu "${search_term}". Skúste iný názov.`;
                 }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'check_date':
@@ -601,6 +697,9 @@ router.post('/', async (req, res) => {
                 } else {
                     response = "Nastala chyba pri kontrole termínu. Skúste to prosím znovu.";
                 }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
                 break;
 
             case 'get_opening_hours':
@@ -632,7 +731,7 @@ router.post('/', async (req, res) => {
                     success: false,
                     type: "unknown_tool",
                     message: `Neznámy nástroj: ${tool_name}`,
-                    available_tools: ["get_services_overview", "get_opening_hours", "search_service", "find_soonest_slot"]
+                    available_tools: ["quick_booking", "select_location", "get_services_overview", "get_opening_hours", "search_service", "find_soonest_slot"]
                 });
         }
 
