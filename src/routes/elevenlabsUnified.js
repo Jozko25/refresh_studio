@@ -186,7 +186,9 @@ router.get('/debug/search/:searchTerm', async (req, res) => {
                 searchTerm: searchTerm,
                 totalResults: searchResult.found,
                 services: searchResult.services.map(s => ({
+                    serviceId: s.serviceId,
                     title: s.title,
+                    name: s.name,
                     price: s.price,
                     category: s.categoryName,
                     score: s.score || 0
