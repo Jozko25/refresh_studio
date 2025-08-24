@@ -430,29 +430,65 @@ router.post('/', async (req, res) => {
                 });
                 
                 if (searchResult.success && searchResult.found > 0) {
-                    // Smart service selection - prefer general services over age-specific ones
-                    let service = searchResult.services[0]; // default fallback
-                    
-                    // Look for general/adult services when not specifically requesting youth services
+                    // Check if we have multiple age-based options that need clarification
                     const ageSpecificKeywords = ['mládež', 'mladých', 'do 18', 'do 20', 'deti'];
+                    const adultKeywords = ['základ', 'dospelí', 'dospelý', 'rokov', 'mám'];
+                    
                     const hasAgeRequest = search_term.toLowerCase().split(' ').some(word => 
                         ageSpecificKeywords.some(keyword => word.includes(keyword))
                     );
+                    const hasAdultRequest = search_term.toLowerCase().split(' ').some(word => 
+                        adultKeywords.some(keyword => word.includes(keyword))
+                    );
                     
-                    if (!hasAgeRequest) {
-                        // Prefer services without age restrictions (general adult services)
-                        const generalService = searchResult.services.find(s => 
-                            !ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
-                        );
+                    // Find age-specific and general services
+                    const ageSpecificServices = searchResult.services.filter(s => 
+                        ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
+                    );
+                    const generalServices = searchResult.services.filter(s => 
+                        !ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
+                    );
+                    
+                    // If we have both age-specific and general services, ask for clarification
+                    // But only if user hasn't specified age preference
+                    if (!hasAgeRequest && !hasAdultRequest && ageSpecificServices.length > 0 && generalServices.length > 0) {
+                        console.log(`🤔 Multiple age options available, asking for clarification`);
                         
-                        if (generalService) {
-                            service = generalService;
-                            console.log(`🎯 Selected general service over age-specific:`, service);
-                        } else {
-                            console.log(`🎯 Using first available service:`, service);
-                        }
+                        let response = `Pre ${searchResult.services[0].name.split(' ')[0]} máme rôzne možnosti:\n\n`;
+                        
+                        // Show age-specific options
+                        ageSpecificServices.slice(0, 2).forEach((service, index) => {
+                            response += `👦 ${service.name}: ${service.price}\n`;
+                        });
+                        
+                        // Show general/adult options  
+                        generalServices.slice(0, 2).forEach((service, index) => {
+                            response += `👩 ${service.name}: ${service.price}\n`;
+                        });
+                        
+                        response += `\nAký je váš vek alebo ktorá možnosť vás zaujíma?`;
+                        
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(response);
+                    }
+                    
+                    // Smart service selection based on request
+                    let service = searchResult.services[0]; // default fallback
+                    
+                    if (hasAdultRequest && generalServices.length > 0) {
+                        // Use general/adult service when adult indicators present
+                        service = generalServices[0];
+                        console.log(`🎯 Adult request detected, using general service:`, service);
+                    } else if (hasAgeRequest && ageSpecificServices.length > 0) {
+                        // Use age-specific service when requested
+                        service = ageSpecificServices[0];
+                        console.log(`🎯 Age-specific request, using youth service:`, service);
+                    } else if (!hasAgeRequest && !hasAdultRequest && generalServices.length > 0) {
+                        // Prefer general services for non-age-specific requests
+                        service = generalServices[0];
+                        console.log(`🎯 Selected general service over age-specific:`, service);
                     } else {
-                        console.log(`🎯 Age-specific request, using first match:`, service);
+                        console.log(`🎯 Using first available service:`, service);
                     }
                     
                     // Get real availability using the same method as the working booking endpoint

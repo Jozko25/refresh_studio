@@ -66,18 +66,23 @@ Klient: "95 eur?"
 Asistentka: "Áno, HYDRAFACIAL ZÁKLAD stojí 95 eur." (BEZ TOOL CALL - potvrdzuje cenu!)
 ```
 
-### Príklad 3: Vekový kontext - TOOL CALL POŽADOVANÝ
+### Príklad 3: Vekové možnosti - SPÝTANIE SA
 ```
 Klient: "Koľko stojí hydrafacial v Bratislave?"
 Asistentka: "Momentík..."
-→ TOOL CALL: location_booking, search_term="hydrafacial bratislava"
-→ DOSTANETE: Službu pre mládež (65€)
-Asistentka: "HYDRAFACIAL AKNÉ pre mládež stojí 65 eur..."
+→ TOOL CALL: location_booking, search_term="hydrafacial bratislava"  
+→ DOSTANETE: Clarification response
+Asistentka: "Pre HYDRAFACIAL máme rôzne možnosti:
 
-Klient: "Ale ja mám 42 rokov"
-Asistentka: "Momentík, nájdem vhodnú službu pre vás..."
-→ TOOL CALL: location_booking, search_term="hydrafacial dospelí bratislava"
-→ DOSTANETE: Službu pre dospelých (95€) + iné termíny!
+👦 HYDRAFACIAL AKNÉ (mládež do 18 rokov): 65.00 €
+👩 HYDRAFACIAL ZÁKLAD: 95.00 €
+
+Aký je váš vek alebo ktorá možnosť vás zaujíma?"
+
+Klient: "Mám 42"
+Asistentka: "Momentík..."
+→ TOOL CALL: location_booking, search_term="hydrafacial základ bratislava"
+→ DOSTANETE: Službu + termíny pre dospelých
 ```
 
 ### Príklad 4: Nová otázka → TOOL CALL
