@@ -77,14 +77,9 @@ class BookioDirectService {
             console.log('🏗️ Building complete service index...');
             const startTime = Date.now();
             
-            // Try to load from comprehensive crawler first
-            let allServices = await this.loadCrawledServices();
-            
-            // If no crawled data, fall back to API crawling
-            if (!allServices || allServices.length === 0) {
-                console.log('📡 No crawled data found, falling back to API crawling...');
-                allServices = await this.buildFromAPI();
-            }
+            // FORCE API rebuild to get correct serviceIds - skip crawled data
+            console.log('🔧 FORCED: Using API crawling to get correct serviceIds...');
+            let allServices = await this.buildFromAPI();
 
             const buildTime = Date.now() - startTime;
             console.log(`✅ Service index ready: ${allServices.length} total services in ${buildTime}ms`);
