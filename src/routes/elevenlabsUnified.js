@@ -307,7 +307,7 @@ router.post('/', async (req, res) => {
             body: req.body
         });
 
-        let { tool_name, search_term, service_id, worker_id = -1, date, time, location } = req.body;
+        let { tool_name, search_term, service_id, worker_id = -1, date, time, location, preferred_location, user_name, user_email, user_phone, age } = req.body;
 
         // Handle ElevenLabs function_call format
         if (req.body.function_call && req.body.function_call.name) {
@@ -321,7 +321,12 @@ router.post('/', async (req, res) => {
                     worker_id = params.worker_id || -1;
                     date = params.date;
                     time = params.time;
-                    location = params.location;
+                    location = params.location || params.preferred_location;
+                    preferred_location = params.preferred_location;
+                    user_name = params.user_name;
+                    user_email = params.user_email;
+                    user_phone = params.user_phone;
+                    age = params.age;
                 } catch (e) {
                     console.log('Failed to parse function_call.parameters:', e);
                 }
@@ -427,7 +432,7 @@ router.post('/', async (req, res) => {
                 }
                 
                 // Parse combined location + service request
-                const locationMatch = detectLocation(search_term);
+                const locationMatch = detectLocation(search_term, location || preferred_location);
                 if (!locationMatch) {
                     res.set('Content-Type', 'text/plain');
                     return res.send("Nerozumiem lokáciu. Povedzte 'Bratislava' alebo 'Pezinok'.");
@@ -818,7 +823,7 @@ router.post('/', async (req, res) => {
                 }
                 
                 // Detect or ask for location
-                const searchLocation = detectLocation(search_term, location);
+                const searchLocation = detectLocation(search_term, location || preferred_location);
                 if (!searchLocation) {
                     response = `V ktorom meste hľadáte službu "${search_term}"?\n\n`;
                     response += `🏢 Bratislava - Lazaretská 13\n`;
@@ -1181,13 +1186,13 @@ router.post('/', async (req, res) => {
                 // Extract all possible parameters from the agent
                 const action = req.body.action || 'search'; // search, check_availability, confirm
                 const service = req.body.service || req.body.service_name || search_term;
-                const customerAge = req.body.age || req.body.customer_age;
-                const customerName = req.body.name || req.body.customer_name;
-                let customerEmail = req.body.email || req.body.customer_email || '';
-                const customerPhone = req.body.phone || req.body.customer_phone;
-                const requestedDate = req.body.date;
-                const requestedTime = req.body.time;
-                const requestedLocation = req.body.location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
+                const customerAge = req.body.age || req.body.customer_age || age;
+                const customerName = req.body.name || req.body.customer_name || user_name;
+                let customerEmail = req.body.email || req.body.customer_email || user_email || '';
+                const customerPhone = req.body.phone || req.body.customer_phone || user_phone;
+                const requestedDate = req.body.date || date;
+                const requestedTime = req.body.time || time;
+                const requestedLocation = req.body.location || location || preferred_location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
                 
                 // Fix Slovak "zavinac" issue - replace common Slovak words for @ 
                 if (customerEmail) {
