@@ -116,16 +116,40 @@ class LocationBookioService {
             // Get available slots using the correct widget API
             const today = new Date();
             
+            // If no specific worker provided, get workers for this service and location
+            if (workerId === -1) {
+                const workersResponse = await axios.post(`${this.baseUrl}/widget/api/workers?lang=sk`, {
+                    serviceId: parseInt(serviceId),
+                    facility: locationInfo.facility,
+                    lang: 'sk'
+                }, {
+                    timeout: 10000,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const workers = workersResponse.data?.data || [];
+                if (workers.length > 0) {
+                    // Use first available worker
+                    workerId = workers[0].workerId;
+                    console.log(`👤 Using worker ${workerId} for ${location} service ${serviceId}`);
+                } else {
+                    console.log(`⚠️ No workers found for service ${serviceId} in ${location}`);
+                    workerId = -1; // Keep default
+                }
+            }
+            
             // Try multiple days starting from today
             for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
                 const checkDate = new Date(today);
                 checkDate.setDate(today.getDate() + dayOffset);
                 
-                const formattedDateTime = `${this.formatDate(checkDate)} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+                const formattedDateTime = `${this.formatDate(checkDate)} 00:00`;
                 
                 const response = await axios.post(`${this.baseUrl}/widget/api/allowedTimes?lang=sk`, {
                     serviceId: parseInt(serviceId),
-                    workerId: parseInt(workerId) || 18204, // Default worker
+                    workerId: parseInt(workerId),
                     date: formattedDateTime,
                     lang: 'sk',
                     count: 1,
@@ -140,6 +164,11 @@ class LocationBookioService {
 
                 const times = response.data?.data?.times?.all || [];
                 
+                console.log(`🕐 Checking ${formattedDateTime} for service ${serviceId} in ${location}: ${times.length} slots`);
+                if (times.length > 0) {
+                    console.log(`📅 Available times for ${formattedDateTime}: ${times.map(t => t.name).slice(0, 5).join(', ')}${times.length > 5 ? '...' : ''}`);
+                }
+                
                 if (times.length > 0) {
                     // Found available slots for this day
                     const earliestTime = times[0];
@@ -148,6 +177,8 @@ class LocationBookioService {
                     
                     // Get alternative times from the same day
                     const alternativeSlots = times.slice(1, 3).map(time => time.name);
+                    
+                    console.log(`✅ Found earliest slot in ${location}: ${this.formatDate(slotDate)} at ${earliestTime.name}`);
                     
                     return {
                         success: true,
