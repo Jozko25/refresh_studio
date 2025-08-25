@@ -689,16 +689,19 @@ router.post('/', async (req, res) => {
                     console.log('🕐 Time:', bookingParams.time);
                     console.log('🚨 === END BOOKING REQUEST ===');
                     
+                    // Get service name from the search result if available
+                    const serviceName = bookingParams.serviceName || `Service ID: ${bookingParams.serviceId}`;
+                    
                     // Send booking data to Zapier webhook
                     try {
                         await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', {
-                            customer_name: bookingParams.name,
-                            customer_email: bookingParams.email,
-                            customer_phone: bookingParams.phone,
-                            service_id: bookingParams.serviceId,
-                            service_name: 'HYDRAFACIAL ZÁKLAD',
-                            date: bookingParams.date,
-                            time: bookingParams.time,
+                            customer_name: bookingParams.name || 'Unknown',
+                            customer_email: bookingParams.email || 'no-email@example.com',
+                            customer_phone: bookingParams.phone || '+421000000000',
+                            service_id: bookingParams.serviceId || '000000',
+                            service_name: serviceName,
+                            date: bookingParams.date || 'TBD',
+                            time: bookingParams.time || 'TBD',
                             source: 'ElevenLabs Voice Agent'
                         });
                         console.log('📨 Booking data sent to Zapier webhook successfully');
