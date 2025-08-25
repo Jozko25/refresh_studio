@@ -427,8 +427,8 @@ router.post('/', async (req, res) => {
                 
                 console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"${requestedTime ? ` (requested time: ${requestedTime})` : ''}`);
                 
-                // Search for the service using location-aware service
-                const searchResult = await LocationBookioService.searchServices(searchWords.join(' '), locationMatch);
+                // Search for the service using LLM-powered service matching
+                const searchResult = await BookioDirectService.searchServices(searchWords.join(' '));
                 
                 console.log(`📋 Search result:`, {
                     success: searchResult.success,
