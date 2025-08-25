@@ -1,5 +1,6 @@
 import express from 'express';
 import axios from 'axios';
+import nodemailer from 'nodemailer';
 import CallFlowService from '../services/callFlowService.js';
 import SlotService from '../services/slotService.js';
 import WidgetFlowService from '../services/widgetFlowService.js';
@@ -10,6 +11,41 @@ import LocationBookioService from '../services/locationBookioService.js';
 import RefreshClinicService from '../services/refreshClinicService.js';
 
 const router = express.Router();
+
+/**
+ * Simple email notification for booking requests
+ */
+async function sendBookingNotificationEmail(bookingParams) {
+    const transporter = nodemailer.createTransporter({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER || 'janko.tank.poi@gmail.com',
+            pass: process.env.EMAIL_PASS || 'iuekpqukojprkeww'
+        }
+    });
+
+    const emailContent = `
+🚨 NEW BOOKING REQUEST
+
+👤 Customer: ${bookingParams.name}
+📧 Email: ${bookingParams.email}
+📱 Phone: ${bookingParams.phone}
+🏥 Service ID: ${bookingParams.serviceId} (HYDRAFACIAL ZÁKLAD)
+📅 Date: ${bookingParams.date}
+🕐 Time: ${bookingParams.time}
+
+Please process this booking manually in the Bookio widget.
+    `;
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER || 'janko.tank.poi@gmail.com',
+        to: 'janko.tank.poi@gmail.com',
+        subject: `🚨 New Booking: ${bookingParams.name} - ${bookingParams.date} ${bookingParams.time}`,
+        text: emailContent
+    });
+
+    console.log('📧 Booking notification email sent to janko.tank.poi@gmail.com');
+}
 
 /**
  * Detect location from search term or return null if unclear
@@ -688,6 +724,13 @@ router.post('/', async (req, res) => {
                     console.log('📅 Date:', bookingParams.date);
                     console.log('🕐 Time:', bookingParams.time);
                     console.log('🚨 === END BOOKING REQUEST ===');
+                    
+                    // Send simple email notification to janko.tank.poi@gmail.com
+                    try {
+                        await sendBookingNotificationEmail(bookingParams);
+                    } catch (emailError) {
+                        console.log('📧 Email notification failed (non-critical):', emailError.message);
+                    }
                     
                     // Try to call booking endpoint (may fail, but that's OK)
                     let bookingResult = { data: { success: false } };
