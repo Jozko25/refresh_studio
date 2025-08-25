@@ -107,14 +107,32 @@ class LLMServiceMatcher {
 Available services:
 ${serviceList}
 
-Which service number best matches what the customer wants? Consider:
-- Exact name matches (highest priority)
-- Normalized text matches (ignoring accents/diacritics)
-- Similar services (e.g., "biorepeel" matches "Chemický peeling BIOREPEEL") 
-- Slovak language variations (ľ→l, č→c, š→s, ž→z, ý→y, etc.)
-- Common misspellings
-- Service categories
-- Both original and normalized service names provided
+Match the customer's request to the most appropriate service. Follow this EXACT priority:
+
+1. **EXACT NAME MATCHES** (highest priority)
+   - Look for identical words in service names
+
+2. **SLOVAK ACCENT VARIATIONS** 
+   - "exceláže" = "EXCELLAGE" (Slovak speakers add -áže ending to foreign words)
+   - "institut estéderm" = "Institut Esthederm"
+   - Remove all accents: á→a, é→e, í→i, ó→o, ú→u, ý→y, ň→n, ť→t, ď→d, ľ→l, č→c, š→s, ž→z
+
+3. **AGE-APPROPRIATE SELECTION**
+   - For ages 16-25: prefer BASIC/ZÁKLAD services, AKNÉ treatments
+   - For ages 26-35: prefer standard services without "POKROČILÉ" or "ADVANCED"
+   - For ages 36+: any service level appropriate
+   - "pleťové ošetrenie 25 rokov" should match BASIC facial treatments, NOT advanced mezoterapia
+
+4. **PARTIAL MATCHES**
+   - Look for key words within service names
+   - "biorepeel" matches "Chemický peeling BIOREPEEL"
+
+5. **CATEGORY MATCHES** (lowest priority)
+
+CRITICAL RULES:
+- "exceláže" MUST match "EXCELLAGE", never "DISCOVERY"
+- Young clients (under 30) should get basic treatments unless specifically requesting advanced
+- Always prioritize exact name matches over category matches
 
 Respond with only the service number (1-${serviceList.split('\n').length}).`;
     }

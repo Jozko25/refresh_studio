@@ -310,7 +310,7 @@ class BookioDirectService {
             console.log(`🔍 Running fallback search for: "${search}" (normalized: "${normalizedSearch}")`);
             const searchWords = normalizedSearch.split(' ').filter(word => word.length > 1);
             
-            // Simplified scoring for fallback
+            // Simplified scoring for fallback with fuzzy matching
             const scoredServices = services.map(service => {
                 const title = service.title.toLowerCase();
                 const normalizedTitle = this.normalizeText(service.title);
@@ -331,6 +331,11 @@ class BookioDirectService {
                 // Search in full normalized search text (includes category and description)
                 if (normalizedSearchText.includes(normalizedSearch)) {
                     score += 200;
+                }
+                
+                // Fuzzy matching for common Slovak mistakes (e.g., "exceláže" → "excellage")
+                if (this.fuzzyMatch(normalizedSearch, normalizedTitle)) {
+                    score += 400;
                 }
                 
                 // All words present (using normalized text)

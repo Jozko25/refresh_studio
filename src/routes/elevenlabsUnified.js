@@ -513,17 +513,19 @@ router.post('/', async (req, res) => {
                             }
                         }
                     } else if (hasAdultRequest && generalServices.length > 0) {
-                        // Use general/adult service when adult indicators present
-                        service = generalServices[0];
-                        console.log(`🎯 Adult request detected, using general service:`, service);
+                        // For adult requests, prefer age-appropriate basic services
+                        const ageBasedService = this.selectAgeAppropriateService(search_term, generalServices);
+                        service = ageBasedService || generalServices[0];
+                        console.log(`🎯 Adult request detected, using age-appropriate service:`, service);
                     } else if (hasAgeRequest && ageSpecificServices.length > 0) {
                         // Use age-specific service when requested
                         service = ageSpecificServices[0];
                         console.log(`🎯 Age-specific request, using youth service:`, service);
                     } else if (!hasAgeRequest && !hasAdultRequest && generalServices.length > 0) {
-                        // Prefer general services for non-age-specific requests
-                        service = generalServices[0];
-                        console.log(`🎯 Selected general service over age-specific:`, service);
+                        // For general requests, prefer simpler services over complex ones
+                        const basicService = this.selectBasicService(generalServices);
+                        service = basicService || generalServices[0];
+                        console.log(`🎯 Selected basic service over complex:`, service);
                     } else {
                         console.log(`🎯 Using first available service:`, service);
                     }
