@@ -261,7 +261,7 @@ router.get('/', (req, res) => {
     res.json({
         success: true,
         message: "REFRESH clinic webhook is ready",
-        available_tools: ["quick_booking", "select_location", "location_booking", "search_service", "find_soonest_slot", "get_services_overview", "get_opening_hours"]
+        available_tools: ["quick_booking", "select_location", "location_booking", "search_service", "find_soonest_slot", "get_services_overview", "get_opening_hours", "confirm_booking"]
     });
 });
 
@@ -540,13 +540,69 @@ router.post('/', async (req, res) => {
                 return res.send(response);
                 break;
 
-            case 'confirm_booking_DISABLED':
-                res.set('Content-Type', 'application/json');
-                return res.json({
-                    success: false,
-                    type: "booking_disabled",
-                    message: "Rezervácie nie sú momentálne dostupné"
-                });
+            case 'confirm_booking':
+                // Parse booking data from search_term
+                // Expected format: "serviceId:101302,workerId:18204,date:27.08.2025,time:9:15,name:Jan Harmady,email:test@example.com,phone:+421910223761"
+                
+                if (!search_term || !search_term.includes('serviceId:')) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nie sú poskytnuté údaje pre rezerváciu. Potrebujem serviceId, dátum, čas, meno, email a telefón.");
+                }
+                
+                try {
+                    // Parse booking parameters
+                    const bookingParams = {};
+                    search_term.split(',').forEach(param => {
+                        const [key, value] = param.split(':');
+                        if (key && value) {
+                            bookingParams[key.trim()] = value.trim();
+                        }
+                    });
+                    
+                    console.log('🎯 ElevenLabs booking attempt:', bookingParams);
+                    
+                    // Validate required fields
+                    const required = ['serviceId', 'date', 'time', 'name'];
+                    const missing = required.filter(field => !bookingParams[field]);
+                    
+                    if (missing.length > 0) {
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(`Chýbajú údaje pre rezerváciu: ${missing.join(', ')}`);
+                    }
+                    
+                    // Split name into first and last name
+                    const nameParts = bookingParams.name.split(' ');
+                    const firstName = nameParts[0] || 'Unknown';
+                    const lastName = nameParts.slice(1).join(' ') || 'Customer';
+                    
+                    // Call booking endpoint
+                    const axios = await import('axios');
+                    const bookingResult = await axios.default.post(`${req.protocol}://${req.get('host')}/api/booking/create`, {
+                        serviceId: parseInt(bookingParams.serviceId),
+                        workerId: parseInt(bookingParams.workerId) || 18204, // Default worker
+                        date: bookingParams.date,
+                        hour: bookingParams.time,
+                        firstName: firstName,
+                        lastName: lastName,
+                        email: bookingParams.email || 'noemail@refresh-studio.sk',
+                        phone: bookingParams.phone || '+421000000000',
+                        note: `Rezervácia cez ElevenLabs agenta`,
+                        acceptTerms: true
+                    });
+                    
+                    if (bookingResult.data.success) {
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(`✅ Rezervácia bola úspešne vytvorená na ${bookingParams.date} o ${bookingParams.time}. Potvrdenie bolo odoslané emailom.`);
+                    } else {
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(`❌ Rezervácia sa nepodarila: ${bookingResult.data.message || 'Neznáma chyba'}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Booking error:', error.message);
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`❌ Nastala chyba pri rezervácii: ${error.message}`);
+                }
                 break;
 
             case 'get_services_overview':
@@ -884,7 +940,7 @@ router.post('/', async (req, res) => {
                     success: false,
                     type: "unknown_tool",
                     message: `Neznámy nástroj: ${tool_name}`,
-                    available_tools: ["quick_booking", "select_location", "location_booking", "get_services_overview", "get_opening_hours", "search_service", "find_soonest_slot"]
+                    available_tools: ["quick_booking", "select_location", "location_booking", "get_services_overview", "get_opening_hours", "search_service", "find_soonest_slot", "confirm_booking"]
                 });
         }
 
