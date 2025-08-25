@@ -1174,7 +1174,7 @@ router.post('/', async (req, res) => {
                 });
                 break;
 
-            case 'refresh_booking':
+            case 'refresh_booking': {
                 // All-in-one booking tool for ElevenLabs agent
                 // Can handle: search, availability check, or booking confirmation
                 
@@ -1319,7 +1319,11 @@ router.post('/', async (req, res) => {
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
                     // Include service info in response for ElevenLabs to track
-                    response = `${selectedService.name}\n`;
+                    const fullServiceName = selectedService.categoryName ? 
+                        `${selectedService.categoryName} - ${selectedService.name}` : 
+                        selectedService.name;
+                    
+                    response = `${fullServiceName}\n`;
                     response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
                     response += `💰 ${selectedService.price}\n`;
                     response += `⏱️ ${selectedService.duration}\n\n`;
@@ -1342,6 +1346,7 @@ router.post('/', async (req, res) => {
                 
                 res.set('Content-Type', 'text/plain');
                 return res.send(response);
+            }
                 break;
 
             default:
