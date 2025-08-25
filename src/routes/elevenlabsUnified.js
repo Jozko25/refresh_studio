@@ -431,14 +431,18 @@ router.post('/', async (req, res) => {
                 
                 if (searchResult.success && searchResult.found > 0) {
                     // Check if we have multiple age-based options that need clarification
-                    const ageSpecificKeywords = ['mládež', 'mladých', 'do 18', 'do 20', 'deti'];
+                    const ageSpecificKeywords = ['mládež', 'mladých', 'do 18', 'do 20', 'deti', 'akné'];
                     const adultKeywords = ['základ', 'dospelí', 'dospelý', 'rokov', 'mám'];
+                    const priceSpecificKeywords = ['35', '55', '€', 'eur'];
                     
                     const hasAgeRequest = search_term.toLowerCase().split(' ').some(word => 
                         ageSpecificKeywords.some(keyword => word.includes(keyword))
                     );
                     const hasAdultRequest = search_term.toLowerCase().split(' ').some(word => 
                         adultKeywords.some(keyword => word.includes(keyword))
+                    );
+                    const hasPriceRequest = search_term.toLowerCase().split(' ').some(word => 
+                        priceSpecificKeywords.some(keyword => word.includes(keyword))
                     );
                     
                     // Find age-specific and general services
@@ -449,10 +453,18 @@ router.post('/', async (req, res) => {
                         !ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
                     );
                     
-                    // If we have both age-specific and general services, ask for clarification
-                    // But only if user hasn't specified age preference
-                    if (!hasAgeRequest && !hasAdultRequest && ageSpecificServices.length > 0 && generalServices.length > 0) {
-                        console.log(`🤔 Multiple age options available, asking for clarification`);
+                    // Check if we have multiple different services (not just price variations)
+                    const uniqueServiceNames = [...new Set(searchResult.services.map(s => s.name.replace(/™/g, '').replace(/\s+/g, ' ').trim().toUpperCase()))];
+                    const hasDifferentServices = uniqueServiceNames.length > 1;
+                    
+                    // Only ask for age clarification if we have truly different age-based services, not just price variations
+                    if (!hasAgeRequest && !hasAdultRequest && !hasPriceRequest && 
+                        ageSpecificServices.length > 0 && generalServices.length > 0 && 
+                        hasDifferentServices) {
+                        
+                        console.log(`🤔 Multiple different age options available, asking for clarification`);
+                        console.log(`Age services: ${ageSpecificServices.map(s => s.name).join(', ')}`);
+                        console.log(`General services: ${generalServices.map(s => s.name).join(', ')}`);
                         
                         let response = `Pre ${searchResult.services[0].name.split(' ')[0]} máme rôzne možnosti:\n\n`;
                         
@@ -475,7 +487,20 @@ router.post('/', async (req, res) => {
                     // Smart service selection based on request
                     let service = searchResult.services[0]; // default fallback
                     
-                    if (hasAdultRequest && generalServices.length > 0) {
+                    // Check for price-specific request (e.g., "za 55 eur")
+                    if (hasPriceRequest) {
+                        const priceMatch = search_term.match(/(\d+)\s*(eur|€)/i);
+                        if (priceMatch) {
+                            const requestedPrice = priceMatch[1];
+                            const priceMatchedService = searchResult.services.find(s => 
+                                s.price.includes(requestedPrice)
+                            );
+                            if (priceMatchedService) {
+                                service = priceMatchedService;
+                                console.log(`💰 Price-specific request (${requestedPrice}€), using:`, service.name);
+                            }
+                        }
+                    } else if (hasAdultRequest && generalServices.length > 0) {
                         // Use general/adult service when adult indicators present
                         service = generalServices[0];
                         console.log(`🎯 Adult request detected, using general service:`, service);
