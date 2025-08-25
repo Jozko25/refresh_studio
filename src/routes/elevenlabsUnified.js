@@ -702,7 +702,8 @@ router.post('/', async (req, res) => {
                             service_name: serviceName,
                             date: bookingParams.date || 'TBD',
                             time: bookingParams.time || 'TBD',
-                            source: 'ElevenLabs Voice Agent'
+                            source: 'ElevenLabs Voice Agent',
+                            booking_link: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
                         });
                         console.log('📨 Booking data sent to Zapier webhook successfully');
                     } catch (zapierError) {
