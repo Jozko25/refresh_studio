@@ -1313,27 +1313,86 @@ router.post('/', async (req, res) => {
                 
                 // Otherwise, search for services and show availability
                 const searchTerm = service + (customerAge ? ` vek ${customerAge}` : '') + (requestedLocation ? ` ${requestedLocation}` : '');
+                
+                // Extract time request from the original query
+                const timePattern = /(\d{1,2}):?(\d{2})/;
+                const timeMatch = service.match(timePattern) || (req.body.search_term && req.body.search_term.match(timePattern));
+                const requestedTimeFromQuery = timeMatch ? `${timeMatch[1]}:${timeMatch[2] || '00'}` : requestedTime;
+                
                 const searchResult = await BookioDirectService.searchServices(searchTerm);
                 
                 if (searchResult.success && searchResult.found > 0) {
                     const selectedService = searchResult.services[0];
-                    
-                    // NEVER show specific times - Bookio API is unreliable and gives wrong data
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
-                    // Include service info in response for ElevenLabs to track
-                    const fullServiceName = selectedService.categoryName ? 
-                        `${selectedService.categoryName} - ${selectedService.name}` : 
-                        selectedService.name;
-                    
-                    response = `${fullServiceName}\n`;
-                    response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
-                    response += `💰 ${selectedService.price}\n`;
-                    response += `⏱️ ${selectedService.duration}\n\n`;
-                    
-                    // Always direct to booking widget instead of showing wrong times
-                    response += `Pre rezerváciu a overenie dostupných termínov pokračujte cez náš rezervačný systém.\n`;
-                    response += `Chcete pokračovať s rezerváciou?`;
+                    // Check if user is asking for a specific time
+                    if (requestedTimeFromQuery) {
+                        console.log(`🕐 Time-specific request detected: ${requestedTimeFromQuery}`);
+                        
+                        try {
+                            // Get availability for the specific time request
+                            const fullAvailability = await BookioDirectService.getAvailableTimesAndDays(
+                                selectedService.serviceId, -1, 7, 2
+                            );
+                            
+                            if (fullAvailability.success && fullAvailability.availableTimes) {
+                                const hasRequestedTime = fullAvailability.availableTimes.includes(requestedTimeFromQuery);
+                                
+                                if (hasRequestedTime) {
+                                    response = `Áno, ${requestedTimeFromQuery} je dostupné!\n`;
+                                    response += `📋 ${selectedService.name}\n`;
+                                    response += `📅 ${fullAvailability.soonestDate} o ${requestedTimeFromQuery}\n`;
+                                    response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
+                                    response += `💰 ${selectedService.price}\n\n`;
+                                    response += `Chcete si rezervovať tento termín?`;
+                                } else {
+                                    const closestTimes = fullAvailability.availableTimes.filter(time => {
+                                        const [hour, minute] = time.split(':').map(Number);
+                                        const [reqHour, reqMinute] = requestedTimeFromQuery.split(':').map(Number);
+                                        const timeMinutes = hour * 60 + minute;
+                                        const reqMinutes = reqHour * 60 + reqMinute;
+                                        return Math.abs(timeMinutes - reqMinutes) <= 120; // Within 2 hours
+                                    }).slice(0, 4);
+                                    
+                                    response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné.\n`;
+                                    response += `📋 ${selectedService.name}\n`;
+                                    response += `💰 ${selectedService.price}\n\n`;
+                                    
+                                    if (closestTimes.length > 0) {
+                                        response += `Dostupné časy blízko ${requestedTimeFromQuery}:\n`;
+                                        closestTimes.forEach(time => {
+                                            response += `📅 ${fullAvailability.soonestDate} o ${time}\n`;
+                                        });
+                                        response += `\nKtorý z týchto časov vám vyhovuje?`;
+                                    } else {
+                                        response += `Najbližší dostupný termín je ${fullAvailability.soonestDate} o ${fullAvailability.soonestTime}.`;
+                                    }
+                                }
+                            } else {
+                                response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné. Momentálne nie sú dostupné žiadne termíny pre túto službu.`;
+                            }
+                        } catch (error) {
+                            console.error('❌ Error checking specific time:', error);
+                            response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné. Skúste iný termín.`;
+                        }
+                    } else {
+                        // Regular request - show soonest available time
+                        const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
+                        
+                        // Include service info in response for ElevenLabs to track
+                        const fullServiceName = selectedService.categoryName ? 
+                            `${selectedService.categoryName} - ${selectedService.name}` : 
+                            selectedService.name;
+                        
+                        response = `${fullServiceName}\n`;
+                        response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
+                        response += `💰 ${selectedService.price}\n`;
+                        response += `⏱️ ${selectedService.duration}\n\n`;
+                        
+                        // Direct to booking widget for general queries
+                        response += `Pre rezerváciu a overenie dostupných termínov pokračujte cez náš rezervačný systém.\n`;
+                        response += `Chcete pokračovať s rezerváciou?`;
+                    }
                     
                     // Store service info for next call
                     console.log(`✅ Selected service for booking: ${selectedService.name} (ID: ${selectedService.serviceId})`);
