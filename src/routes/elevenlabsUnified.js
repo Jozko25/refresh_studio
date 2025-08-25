@@ -692,18 +692,21 @@ router.post('/', async (req, res) => {
                     // Get service name from the search result if available
                     const serviceName = bookingParams.serviceName || `Service ID: ${bookingParams.serviceId}`;
                     
-                    // Send booking data to Zapier webhook
+                    // Send booking data to Zapier webhook as form data
                     try {
-                        await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', {
-                            customer_name: bookingParams.name || 'Unknown',
-                            customer_email: bookingParams.email || 'no-email@example.com',
-                            customer_phone: bookingParams.phone || '+421000000000',
-                            service_id: bookingParams.serviceId || '000000',
-                            service_name: serviceName,
-                            date: bookingParams.date || 'TBD',
-                            time: bookingParams.time || 'TBD',
-                            source: 'ElevenLabs Voice Agent',
-                            booking_link: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                        const params = new URLSearchParams();
+                        params.append('customer_name', bookingParams.name || 'Unknown');
+                        params.append('customer_email', bookingParams.email || 'no-email@example.com');
+                        params.append('customer_phone', bookingParams.phone || '+421000000000');
+                        params.append('service_id', bookingParams.serviceId || '000000');
+                        params.append('service_name', serviceName);
+                        params.append('date', bookingParams.date || 'TBD');
+                        params.append('time', bookingParams.time || 'TBD');
+                        params.append('source', 'ElevenLabs Voice Agent');
+                        params.append('booking_link', 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk');
+                        
+                        await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', params, {
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                         });
                         console.log('📨 Booking data sent to Zapier webhook successfully');
                     } catch (zapierError) {
