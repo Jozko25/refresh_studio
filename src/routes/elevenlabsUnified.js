@@ -416,8 +416,8 @@ router.post('/', async (req, res) => {
                 
                 console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"`);
                 
-                // Search for the service using BookioDirectService
-                const searchResult = await BookioDirectService.searchServices(searchWords.join(' '));
+                // Search for the service using location-aware service
+                const searchResult = await LocationBookioService.searchServices(searchWords.join(' '), locationMatch);
                 
                 console.log(`📋 Search result:`, {
                     success: searchResult.success,
@@ -491,15 +491,15 @@ router.post('/', async (req, res) => {
                         console.log(`🎯 Using first available service:`, service);
                     }
                     
-                    // Get real availability using the same method as the working booking endpoint
-                    console.log(`🔍 Calling getAvailableTimesAndDays with serviceId: ${service.serviceId}, worker_id: ${worker_id || -1}`);
+                    // Get real availability using location-aware service
+                    console.log(`🔍 Calling findSoonestSlot with serviceId: ${service.serviceId}, location: ${locationMatch}, worker_id: ${worker_id || -1}`);
                     
                     let slotResult;
                     try {
-                        slotResult = await BookioDirectService.getAvailableTimesAndDays(
+                        slotResult = await LocationBookioService.findSoonestSlot(
                             service.serviceId,
-                            worker_id || -1,
-                            3 // Check up to 3 months ahead
+                            locationMatch,
+                            worker_id || -1
                         );
                         
                         console.log(`⏰ Availability result:`, JSON.stringify(slotResult, null, 2));
@@ -513,20 +513,20 @@ router.post('/', async (req, res) => {
                     response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava - Lazaretská 13' : 'Pezinok'}\n\n`;
                     
                     // Check if we have real availability
-                    if (slotResult.success && slotResult.soonestDate) {
-                        response += `Najbližší termín: ${slotResult.soonestDate} o ${slotResult.soonestTime}`;
+                    if (slotResult.success && slotResult.found && slotResult.date) {
+                        response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
                         
-                        // Add alternative times
-                        if (slotResult.availableTimes && slotResult.availableTimes.length > 1) {
-                            const alternatives = slotResult.availableTimes.slice(1, 3);
+                        // Add alternative times from the same day
+                        if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                            const alternatives = slotResult.alternativeSlots.slice(0, 2);
                             response += `\nĎalšie časy: ${alternatives.join(', ')}`;
                         }
                         
                         // Add next day info if available
                         if (slotResult.daysFromNow === 0) {
-                            response = response.replace(slotResult.soonestDate, 'dnes');
+                            response = response.replace(slotResult.date, 'dnes');
                         } else if (slotResult.daysFromNow === 1) {
-                            response = response.replace(slotResult.soonestDate, 'zajtra');
+                            response = response.replace(slotResult.date, 'zajtra');
                         }
                     } else {
                         response += "Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.";
