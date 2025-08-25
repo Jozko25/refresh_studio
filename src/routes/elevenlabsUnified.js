@@ -1328,9 +1328,9 @@ router.post('/', async (req, res) => {
                 
                 let requestedTimeFromQuery = null;
                 if (timeMatch) {
-                    // Handle different match groups
-                    const hour = timeMatch[1] || timeMatch[3] || timeMatch[4] || timeMatch[2];
-                    if (hour) {
+                    // Handle different match groups - find the first non-undefined group
+                    const hour = timeMatch[1] || timeMatch[2] || timeMatch[3] || timeMatch[4];
+                    if (hour && hour.length <= 2) { // Make sure it's a reasonable hour
                         requestedTimeFromQuery = `${hour}:00`;
                         console.log(`🕐 Extracted time: ${requestedTimeFromQuery} from match: ${JSON.stringify(timeMatch)}`);
                     }
