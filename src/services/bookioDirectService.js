@@ -333,10 +333,10 @@ class BookioDirectService {
                     score += 200;
                 }
                 
-                // Fuzzy matching for common Slovak mistakes (e.g., "exceláže" → "excellage")
-                if (this.fuzzyMatch(normalizedSearch, normalizedTitle)) {
-                    score += 400;
-                }
+                // Fuzzy matching for common Slovak mistakes - disabled for now, LLM handles this
+                // if (this.fuzzyMatch(normalizedSearch, normalizedTitle)) {
+                //     score += 400;
+                // }
                 
                 // All words present (using normalized text)
                 if (searchWords.length > 1 && searchWords.every(word => normalizedSearchText.includes(word))) {
