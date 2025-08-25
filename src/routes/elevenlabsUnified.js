@@ -728,12 +728,10 @@ router.post('/', async (req, res) => {
                     console.log('🕐 Time:', bookingParams.time);
                     console.log('🚨 === END BOOKING REQUEST ===');
                     
-                    // Send simple email notification to janko.tank.poi@gmail.com
-                    try {
-                        await sendBookingNotificationEmail(bookingParams);
-                    } catch (emailError) {
+                    // Send simple email notification to janko.tank.poi@gmail.com (non-blocking)
+                    sendBookingNotificationEmail(bookingParams).catch(emailError => {
                         console.log('📧 Email notification failed (non-critical):', emailError.message);
-                    }
+                    });
                     
                     // Try to call booking endpoint (may fail, but that's OK)
                     let bookingResult = { data: { success: false } };
