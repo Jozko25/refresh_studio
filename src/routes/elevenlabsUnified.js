@@ -704,6 +704,16 @@ router.post('/', async (req, res) => {
                     // Get service name from the search result if available
                     const serviceName = bookingParams.serviceName || `Service ID: ${bookingParams.serviceId}`;
                     
+                    // Detect location from booking params, conversation context, or default to Bratislava
+                    let detectedLocation = bookingParams.location || 
+                                         detectLocation(req.body.conversation_id || '', null) ||
+                                         detectLocation(search_term, null) ||
+                                         'bratislava';
+                    
+                    const locationInfo = LocationBookioService.getLocationInfo(detectedLocation);
+                    
+                    console.log(`📍 Detected location: ${detectedLocation} (${locationInfo ? locationInfo.name : 'Unknown'})`);
+                    
                     // Send booking data to Zapier webhook as JSON with individual fields
                     try {
                         const webhookPayload = {
@@ -714,8 +724,10 @@ router.post('/', async (req, res) => {
                             service_name: serviceName,
                             date: bookingParams.date || 'TBD',
                             time: bookingParams.time || 'TBD',
+                            location: locationInfo ? locationInfo.name : 'Bratislava',
+                            location_address: locationInfo ? locationInfo.address : 'Lazaretská 13, Bratislava',
                             source: 'ElevenLabs Voice Agent',
-                            booking_link: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                            booking_link: locationInfo ? locationInfo.widget_url : 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
                         };
                         
                         await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', webhookPayload, {
