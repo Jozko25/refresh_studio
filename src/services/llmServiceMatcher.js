@@ -25,12 +25,20 @@ class LLMServiceMatcher {
         try {
             console.log(`🤖 Using LLM to match: "${userQuery}" against ${availableServices.length} services`);
             
-            // Prepare service list for LLM
-            const serviceList = availableServices.map((service, index) => 
-                `${index + 1}. ${service.title} - ${service.price} (${service.durationString || service.duration}) [Category: ${service.categoryName}]`
-            ).join('\n');
+            // Normalize user query for better matching
+            const normalizedQuery = this.normalizeText(userQuery);
+            console.log(`🔤 Normalized query: "${userQuery}" → "${normalizedQuery}"`);
+            
+            // Prepare service list for LLM with both original and normalized text
+            const serviceList = availableServices.map((service, index) => {
+                const normalizedTitle = this.normalizeText(service.title);
+                const titleDisplay = normalizedTitle !== service.title.toLowerCase() ? 
+                    `${service.title} (normalized: ${normalizedTitle})` : 
+                    service.title;
+                return `${index + 1}. ${titleDisplay} - ${service.price} (${service.durationString || service.duration}) [Category: ${service.categoryName}]`;
+            }).join('\n');
 
-            const prompt = this.buildMatchingPrompt(userQuery, serviceList);
+            const prompt = this.buildMatchingPrompt(userQuery, serviceList, normalizedQuery);
             
             const response = await axios.post(this.baseURL, {
                 model: "gpt-4o-mini",
@@ -89,18 +97,24 @@ class LLMServiceMatcher {
     /**
      * Build prompt for service matching
      */
-    buildMatchingPrompt(userQuery, serviceList) {
-        return `The customer is asking for: "${userQuery}"
+    buildMatchingPrompt(userQuery, serviceList, normalizedQuery = null) {
+        const queryInfo = normalizedQuery && normalizedQuery !== userQuery.toLowerCase() ? 
+            `The customer is asking for: "${userQuery}" (normalized: "${normalizedQuery}")` :
+            `The customer is asking for: "${userQuery}"`;
+            
+        return `${queryInfo}
 
 Available services:
 ${serviceList}
 
 Which service number best matches what the customer wants? Consider:
 - Exact name matches (highest priority)
-- Similar services (e.g., "biorepeel" matches "Chemický peeling BIOREPEEL")
-- Slovak language variations
+- Normalized text matches (ignoring accents/diacritics)
+- Similar services (e.g., "biorepeel" matches "Chemický peeling BIOREPEEL") 
+- Slovak language variations (ľ→l, č→c, š→s, ž→z, ý→y, etc.)
 - Common misspellings
 - Service categories
+- Both original and normalized service names provided
 
 Respond with only the service number (1-${serviceList.split('\n').length}).`;
     }
@@ -114,16 +128,27 @@ Respond with only the service number (1-${serviceList.split('\n').length}).`;
         }
 
         try {
-            const serviceList = availableServices.map((service, index) => 
-                `${index + 1}. ${service.title} - ${service.price} [${service.categoryName}]`
-            ).join('\n');
+            const normalizedQuery = this.normalizeText(userQuery);
+            
+            const serviceList = availableServices.map((service, index) => {
+                const normalizedTitle = this.normalizeText(service.title);
+                const titleDisplay = normalizedTitle !== service.title.toLowerCase() ? 
+                    `${service.title} (normalized: ${normalizedTitle})` : 
+                    service.title;
+                return `${index + 1}. ${titleDisplay} - ${service.price} [${service.categoryName}]`;
+            }).join('\n');
 
-            const prompt = `Customer query: "${userQuery}"
+            const queryInfo = normalizedQuery !== userQuery.toLowerCase() ? 
+                `Customer query: "${userQuery}" (normalized: "${normalizedQuery}")` :
+                `Customer query: "${userQuery}"`;
+
+            const prompt = `${queryInfo}
 
 Available services:
 ${serviceList}
 
-Return the top ${topN} most relevant service numbers in order of relevance (e.g., "1, 5, 12").`;
+Return the top ${topN} most relevant service numbers in order of relevance (e.g., "1, 5, 12").
+Consider both original and normalized text when matching Slovak accented characters.`;
 
             const response = await axios.post(this.baseURL, {
                 model: "gpt-4o-mini", 
@@ -166,6 +191,18 @@ Return the top ${topN} most relevant service numbers in order of relevance (e.g.
                 method: 'llm'
             };
         }
+    }
+
+    /**
+     * Normalize text for better matching (remove accents, lowercase, etc.)
+     */
+    normalizeText(text) {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .trim();
     }
 
     /**

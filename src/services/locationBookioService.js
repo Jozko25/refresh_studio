@@ -56,22 +56,23 @@ class LocationBookioService {
 
             const services = response.data.data || [];
             
-            // Search logic similar to BookioDirectService
-            const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 2);
+            // Search logic with accent-insensitive matching
+            const normalizedSearchTerm = this.normalizeText(searchTerm);
+            const searchWords = normalizedSearchTerm.split(' ').filter(word => word.length > 2);
             const scoredServices = [];
 
             for (const service of services) {
                 let score = 0;
-                const serviceName = service.title.toLowerCase();
+                const normalizedServiceName = this.normalizeText(service.title);
                 
                 // Exact match gets highest score
-                if (serviceName.includes(searchTerm.toLowerCase())) {
+                if (normalizedServiceName.includes(normalizedSearchTerm)) {
                     score += 100;
                 }
 
-                // Word matching
+                // Word matching with normalized text
                 for (const word of searchWords) {
-                    if (serviceName.includes(word)) score += 50;
+                    if (normalizedServiceName.includes(word)) score += 50;
                 }
 
                 if (score > 0) {
@@ -178,6 +179,18 @@ class LocationBookioService {
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
         return `${day}.${month}.${year}`;
+    }
+
+    /**
+     * Normalize text for better matching (remove accents, lowercase, etc.)
+     */
+    normalizeText(text) {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .trim();
     }
 
     /**

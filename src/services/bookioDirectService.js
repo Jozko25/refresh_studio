@@ -161,8 +161,9 @@ class BookioDirectService {
                     categoryDescription: category.selectServiceTitle,
                     type: service.type,
                     priority: service.priority || 999,
-                    // Add searchable text for better matching
-                    searchText: `${service.title} ${category.title} ${service.description || ''}`.toLowerCase()
+                    // Add searchable text for better matching (both original and normalized)
+                    searchText: `${service.title} ${category.title} ${service.description || ''}`.toLowerCase(),
+                    normalizedSearchText: this.normalizeText(`${service.title} ${category.title} ${service.description || ''}`)
                 }));
 
                 console.log(`📦 Category "${category.title}": ${services.length} services`);
@@ -206,6 +207,9 @@ class BookioDirectService {
             }
 
             console.log(`🔍 Searching for: "${search}" among ${allServices.length} services`);
+            
+            // Normalize search term for better matching with Slovak accents
+            const normalizedSearch = this.normalizeText(search);
             
             // Filter services to prioritize regular pricing over sale items
             // Unless user specifically asks for sale/discount/akcia
@@ -303,33 +307,40 @@ class BookioDirectService {
             }
 
             // Fallback to traditional search with simplified scoring
-            console.log(`🔍 Running fallback search for: "${search}"`);
-            const searchWords = search.split(' ').filter(word => word.length > 1);
+            console.log(`🔍 Running fallback search for: "${search}" (normalized: "${normalizedSearch}")`);
+            const searchWords = normalizedSearch.split(' ').filter(word => word.length > 1);
             
             // Simplified scoring for fallback
             const scoredServices = services.map(service => {
                 const title = service.title.toLowerCase();
+                const normalizedTitle = this.normalizeText(service.title);
                 const searchText = service.searchText || title;
+                const normalizedSearchText = service.normalizedSearchText || normalizedTitle;
                 let score = 0;
                 
-                // Exact title match
-                if (title === search) {
+                // Exact title match (both original and normalized)
+                if (title === search || normalizedTitle === normalizedSearch) {
                     score += 1000;
                 }
                 
-                // Title contains search phrase
-                if (title.includes(search)) {
+                // Title contains search phrase (both original and normalized)
+                if (title.includes(search) || normalizedTitle.includes(normalizedSearch)) {
                     score += 500;
                 }
                 
-                // All words present
-                if (searchWords.length > 1 && searchWords.every(word => title.includes(word))) {
+                // Search in full normalized search text (includes category and description)
+                if (normalizedSearchText.includes(normalizedSearch)) {
+                    score += 200;
+                }
+                
+                // All words present (using normalized text)
+                if (searchWords.length > 1 && searchWords.every(word => normalizedSearchText.includes(word))) {
                     score += 300;
                 }
                 
-                // Individual word matches
+                // Individual word matches (using normalized text)
                 searchWords.forEach(word => {
-                    if (title.includes(word)) {
+                    if (normalizedSearchText.includes(word)) {
                         score += 10;
                     }
                 });
@@ -724,6 +735,18 @@ class BookioDirectService {
      */
     async sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Normalize text for better matching (remove accents, lowercase, etc.)
+     */
+    normalizeText(text) {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .trim();
     }
 
     /**
