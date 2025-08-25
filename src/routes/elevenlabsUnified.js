@@ -309,6 +309,18 @@ router.post('/', async (req, res) => {
 
         let { tool_name, search_term, service_id, worker_id = -1, date, time, location } = req.body;
 
+        // Handle ElevenLabs function_call format
+        if (req.body.function_call && req.body.function_call.name) {
+            tool_name = req.body.function_call.name;
+            const params = JSON.parse(req.body.function_call.parameters);
+            search_term = params.search_term;
+            service_id = params.service_id;
+            worker_id = params.worker_id || -1;
+            date = params.date;
+            time = params.time;
+            location = params.location;
+        }
+
         if (!tool_name) {
             console.log('❌ No tool_name provided, defaulting to get_services_overview');
             // Default to service overview if tool_name is missing
@@ -861,6 +873,65 @@ router.post('/', async (req, res) => {
                     }
                 } else {
                     response = `Ľutujem, nenašla som službu "${search_term}". Skúste iný názov alebo sa spýtajte na naše hlavné služby.`;
+                }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
+                break;
+
+            case 'search_services':
+                // Alias for search_service - same functionality
+                if (!search_term) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
+                }
+                
+                // Detect or ask for location
+                const searchServicesLocation = detectLocation(search_term, location);
+                if (!searchServicesLocation) {
+                    response = `V ktorom meste hľadáte službu "${search_term}"?\n\n`;
+                    response += `🏢 Bratislava - Lazaretská 13\n`;
+                    response += `🏢 Pezinok\n\n`;
+                    response += `Povedzte "Bratislava" alebo "Pezinok".`;
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+                
+                result = await BookioDirectService.searchServices(search_term);
+                if (result.success && result.found > 0) {
+                    if (result.found === 1) {
+                        // Only one service found - provide details with worker info
+                        const service = result.services[0];
+                        let workers = [];
+                        try {
+                            workers = await BookioDirectService.getWorkers(service.serviceId);
+                        } catch (error) {
+                            console.error(`❌ Failed to get workers for service ${service.serviceId}:`, error);
+                        }
+                        const realWorkers = workers.filter(w => w.workerId !== -1);
+                        
+                        const locationName = searchServicesLocation === 'bratislava' ? 'Bratislava' : 'Pezinok';
+                        const locationAddress = searchServicesLocation === 'bratislava' ? 'Lazaretská 13' : 'Pezinok';
+                        
+                        response = `Služba: ${service.name}\n`;
+                        response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                        response += `Miesto: ${locationName} - ${locationAddress}\n`;
+                        if (realWorkers.length > 0) {
+                            response += `Personál: ${realWorkers.map(w => w.workerName).join(', ')}\n`;
+                        }
+                        response += `\nChcete si rezervovať termín?`;
+                    } else {
+                        // Multiple services found
+                        const locationName = searchServicesLocation === 'bratislava' ? 'Bratislava' : 'Pezinok';
+                        response = `Našla som ${result.found} služieb v ${locationName}:\n\n`;
+                        result.services.slice(0, 3).forEach((service, index) => {
+                            response += `${index + 1}. ${service.name}\n`;
+                            response += `   Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                        });
+                        response += `Ktorá služba vás zaujíma?`;
+                    }
+                } else {
+                    response = `Ľutujem, nenašla som službu "${search_term}" v požadovanom meste. Môžete skúsiť iný názov služby?`;
                 }
                 
                 res.set('Content-Type', 'text/plain');
