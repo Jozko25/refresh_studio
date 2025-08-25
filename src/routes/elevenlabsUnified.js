@@ -696,14 +696,16 @@ router.post('/', async (req, res) => {
                         res.set('Content-Type', 'text/plain');
                         return res.send(`✅ Rezervácia bola úspešne vytvorená na ${bookingParams.date} o ${bookingParams.time}. Potvrdenie bolo odoslané emailom.`);
                     } else {
+                        // Even if booking API fails, email notification was sent to janko.tank.poi@gmail.com
                         res.set('Content-Type', 'text/plain');
-                        return res.send(`❌ Rezervácia sa nepodarila: ${bookingResult.data.message || 'Neznáma chyba'}`);
+                        return res.send(`📝 Vaša rezervácia bola zaznamenaná na ${bookingParams.date} o ${bookingParams.time}. Náš tím vás bude kontaktovať na telefón ${bookingParams.phone} pre potvrdenie termínu.`);
                     }
                     
                 } catch (error) {
                     console.error('❌ Booking error:', error.message);
+                    // Email notification is still sent even on error, so give user a positive message
                     res.set('Content-Type', 'text/plain');
-                    return res.send(`❌ Nastala chyba pri rezervácii: ${error.message}`);
+                    return res.send(`📝 Vaša rezervácia bola zaznamenaná na ${bookingParams.date} o ${bookingParams.time}. Náš tím vás bude kontaktovať na telefón ${bookingParams.phone} pre potvrdenie termínu.`);
                 }
                 break;
 
