@@ -1313,9 +1313,7 @@ router.post('/', async (req, res) => {
                 if (searchResult.success && searchResult.found > 0) {
                     const selectedService = searchResult.services[0];
                     
-                    // Get availability
-                    const slotResult = await BookioDirectService.findSoonestSlot(selectedService.serviceId);
-                    
+                    // NEVER show specific times - Bookio API is unreliable and gives wrong data
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
                     // Include service info in response for ElevenLabs to track
@@ -1328,18 +1326,12 @@ router.post('/', async (req, res) => {
                     response += `💰 ${selectedService.price}\n`;
                     response += `⏱️ ${selectedService.duration}\n\n`;
                     
-                    if (slotResult.success && slotResult.found) {
-                        response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
-                        if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
-                            response += `\nĎalšie časy: ${slotResult.alternativeSlots.slice(0, 2).join(', ')}`;
-                        }
-                        response += `\n\nChcete si rezervovať nejaký termín?`;
-                        
-                        // Store service info for next call
-                        console.log(`✅ Selected service for booking: ${selectedService.name} (ID: ${selectedService.serviceId})`);
-                    } else {
-                        response += `Momentálne nie sú dostupné žiadne voľné termíny.`;
-                    }
+                    // Always direct to booking widget instead of showing wrong times
+                    response += `Pre rezerváciu a overenie dostupných termínov pokračujte cez náš rezervačný systém.\n`;
+                    response += `Chcete pokračovať s rezerváciou?`;
+                    
+                    // Store service info for next call
+                    console.log(`✅ Selected service for booking: ${selectedService.name} (ID: ${selectedService.serviceId})`);
                 } else {
                     response = `Ľutujem, nenašla som službu "${service}". Môžete skúsiť iný názov?`;
                 }

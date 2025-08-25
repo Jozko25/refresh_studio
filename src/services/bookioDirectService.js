@@ -779,11 +779,11 @@ class BookioDirectService {
             console.log('🔍 Debug - Allowed days response:', JSON.stringify(allowedDays, null, 2));
             
             if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
-                console.log('❌ No allowed days found');
+                console.log('❌ No allowed days found - API unreliable, disabling time checks');
                 return {
                     success: false,
                     found: false,
-                    message: 'Pre túto službu momentálne nie sú dostupné termíny'
+                    message: 'Pre overenie dostupnosti termínov použite rezervačný systém'
                 };
             }
 
