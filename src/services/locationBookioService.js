@@ -42,12 +42,19 @@ class LocationBookioService {
         }
 
         try {
-            // Get services for this facility
-            const response = await axios.get(`${this.baseUrl}/${locationInfo.facility}/api/services_public`, {
-                timeout: 15000
+            // Get services for this facility using the correct widget API
+            const response = await axios.post(`${this.baseUrl}/widget/api/services?lang=sk`, {
+                facility: locationInfo.facility,
+                categoryId: null, // Get all services
+                lang: 'sk'
+            }, {
+                timeout: 15000,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
-            const services = response.data.services || [];
+            const services = response.data.data || [];
             
             // Search logic similar to BookioDirectService
             const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 2);
@@ -55,9 +62,8 @@ class LocationBookioService {
 
             for (const service of services) {
                 let score = 0;
-                const serviceName = service.name.toLowerCase();
-                const categoryName = (service.category?.name || '').toLowerCase();
-
+                const serviceName = service.title.toLowerCase();
+                
                 // Exact match gets highest score
                 if (serviceName.includes(searchTerm.toLowerCase())) {
                     score += 100;
@@ -66,16 +72,15 @@ class LocationBookioService {
                 // Word matching
                 for (const word of searchWords) {
                     if (serviceName.includes(word)) score += 50;
-                    if (categoryName.includes(word)) score += 25;
                 }
 
                 if (score > 0) {
                     scoredServices.push({
-                        serviceId: service.id,
-                        name: service.name,
-                        price: `${service.price} €`,
-                        duration: `${service.duration}min`,
-                        categoryName: service.category?.name || 'Ostatné',
+                        serviceId: service.serviceId,
+                        name: service.title,
+                        price: service.price,
+                        duration: service.durationString,
+                        categoryName: 'LASEROVÁ EPILÁCIA', // Will be filled properly later
                         location: locationInfo.name,
                         score
                     });
@@ -179,25 +184,22 @@ class LocationBookioService {
         }
 
         try {
-            const response = await axios.get(`${this.baseUrl}/${locationInfo.facility}/api/services_public`, {
-                timeout: 10000
-            });
-
-            const services = response.data.services || [];
-            
-            // Group by category and get top services
-            const categories = {};
-            services.forEach(service => {
-                const categoryName = service.category?.name || 'Ostatné';
-                if (!categories[categoryName]) {
-                    categories[categoryName] = [];
+            // Get categories first
+            const categoriesResponse = await axios.post(`${this.baseUrl}/widget/api/categories?lang=sk`, {
+                facility: locationInfo.facility,
+                lang: 'sk'
+            }, {
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-                categories[categoryName].push(service);
             });
 
-            const overview = Object.keys(categories).slice(0, 3).map(categoryName => ({
-                name: categoryName,
-                description: `${categories[categoryName].length} služieb dostupných v ${locationInfo.name}`
+            const categories = categoriesResponse.data.data || [];
+            
+            const overview = categories.slice(0, 3).map(category => ({
+                name: category.title,
+                description: `Služby dostupné v ${locationInfo.name}`
             }));
 
             return {
