@@ -112,10 +112,11 @@ Match the customer's request to the most appropriate service. Follow this EXACT 
 1. **EXACT NAME MATCHES** (highest priority)
    - Look for identical words in service names
 
-2. **SLOVAK ACCENT VARIATIONS** 
-   - "exceláže" = "EXCELLAGE" (Slovak speakers add -áže ending to foreign words)
-   - "institut estéderm" = "Institut Esthederm"
-   - Remove all accents: á→a, é→e, í→i, ó→o, ú→u, ý→y, ň→n, ť→t, ď→d, ľ→l, č→c, š→s, ž→z
+2. **SLOVAK ACCENT VARIATIONS AND PRONUNCIATION** 
+   - Slovak speakers often adapt foreign words with Slovak endings (e.g., "exceláže" likely refers to "EXCELLAGE")
+   - Consider phonetic similarities and common Slovak pronunciation patterns
+   - Look for accent variations: á→a, é→e, í→i, ó→o, ú→u, ý→y, ň→n, ť→t, ď→d, ľ→l, č→c, š→s, ž→z
+   - "institut estéderm" matches "Institut Esthederm"
 
 3. **AGE-APPROPRIATE SELECTION**
    - For ages 16-25: prefer BASIC/ZÁKLAD services, AKNÉ treatments
@@ -129,10 +130,10 @@ Match the customer's request to the most appropriate service. Follow this EXACT 
 
 5. **CATEGORY MATCHES** (lowest priority)
 
-CRITICAL RULES:
-- "exceláže" MUST match "EXCELLAGE", never "DISCOVERY"
-- Young clients (under 30) should get basic treatments unless specifically requesting advanced
-- Always prioritize exact name matches over category matches
+KEY CONSIDERATIONS:
+- Use your language understanding to match Slovak pronunciations and word adaptations to service names
+- Consider age-appropriateness when multiple services are available
+- Prioritize semantic meaning over exact spelling when dealing with foreign words adapted to Slovak
 
 Respond with only the service number (1-${serviceList.split('\n').length}).`;
     }
