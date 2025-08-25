@@ -409,12 +409,23 @@ router.post('/', async (req, res) => {
                     return res.send("Nerozumiem lokáciu. Povedzte 'Bratislava' alebo 'Pezinok'.");
                 }
                 
+                // Check for time-specific requests (e.g., "12:30", "o 12:30")
+                const timePattern = /(\d{1,2}):?(\d{2})/;
+                const timeMatch = search_term.match(timePattern);
+                const requestedTime = timeMatch ? `${timeMatch[1]}:${timeMatch[2] || '00'}` : null;
+                
+                console.log(`🕐 Time detection: pattern=${timePattern}, match=${JSON.stringify(timeMatch)}, requestedTime=${requestedTime}`);
+                
                 // Use proper search functionality that's already implemented
                 const searchWords = search_term.toLowerCase().split(' ').filter(word => 
-                    word.length > 2 && !['bratislava', 'pezinok'].includes(word)
+                    word.length > 2 && 
+                    !['bratislava', 'pezinok'].includes(word) &&
+                    !timePattern.test(word) &&
+                    word !== 'rokov' &&
+                    word !== 'mám'
                 );
                 
-                console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"`);
+                console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"${requestedTime ? ` (requested time: ${requestedTime})` : ''}`);
                 
                 // Search for the service using location-aware service
                 const searchResult = await LocationBookioService.searchServices(searchWords.join(' '), locationMatch);
@@ -458,7 +469,8 @@ router.post('/', async (req, res) => {
                     const hasDifferentServices = uniqueServiceNames.length > 1;
                     
                     // Only ask for age clarification if we have truly different age-based services, not just price variations
-                    if (!hasAgeRequest && !hasAdultRequest && !hasPriceRequest && 
+                    // Skip age clarification if user specified a time (they want immediate availability info)
+                    if (!hasAgeRequest && !hasAdultRequest && !hasPriceRequest && !requestedTime &&
                         ageSpecificServices.length > 0 && generalServices.length > 0 && 
                         hasDifferentServices) {
                         
@@ -517,19 +529,56 @@ router.post('/', async (req, res) => {
                     }
                     
                     // Get real availability using location-aware service
-                    console.log(`🔍 Calling findSoonestSlot with serviceId: ${service.serviceId}, location: ${locationMatch}, worker_id: ${worker_id || -1}`);
+                    console.log(`🔍 Getting availability with serviceId: ${service.serviceId}, location: ${locationMatch}, worker_id: ${worker_id || -1}, requestedTime: ${requestedTime}`);
                     
                     let slotResult;
                     try {
-                        slotResult = await LocationBookioService.findSoonestSlot(
-                            service.serviceId,
-                            locationMatch,
-                            worker_id || -1
-                        );
+                        if (requestedTime) {
+                            // For time-specific requests, get full day availability from Bratislava service
+                            const BookioDirectService = await import('../services/bookioDirectService.js');
+                            const fullAvailability = await BookioDirectService.default.getAvailableTimesAndDays(
+                                service.serviceId, -1, 3, 2
+                            );
+                            
+                            if (fullAvailability.success && fullAvailability.availableTimes) {
+                                const hasRequestedTime = fullAvailability.availableTimes.includes(requestedTime);
+                                const closestTimes = fullAvailability.availableTimes.filter(time => {
+                                    const [hour, minute] = time.split(':').map(Number);
+                                    const [reqHour, reqMinute] = requestedTime.split(':').map(Number);
+                                    const timeMinutes = hour * 60 + minute;
+                                    const reqMinutes = reqHour * 60 + reqMinute;
+                                    return Math.abs(timeMinutes - reqMinutes) <= 60; // Within 1 hour
+                                });
+                                
+                                slotResult = {
+                                    success: true,
+                                    found: true,
+                                    date: fullAvailability.soonestDate,
+                                    time: hasRequestedTime ? requestedTime : closestTimes[0] || fullAvailability.soonestTime,
+                                    alternativeSlots: hasRequestedTime ? 
+                                        closestTimes.filter(t => t !== requestedTime).slice(0, 4) :
+                                        closestTimes.slice(1, 5),
+                                    totalSlots: fullAvailability.totalAvailableSlots,
+                                    daysFromNow: fullAvailability.daysFromNow,
+                                    timeSpecificRequest: true,
+                                    hasRequestedTime,
+                                    allAvailableTimes: fullAvailability.availableTimes
+                                };
+                            } else {
+                                slotResult = { success: false, error: 'No availability found' };
+                            }
+                        } else {
+                            // Regular request - get soonest slot
+                            slotResult = await LocationBookioService.findSoonestSlot(
+                                service.serviceId,
+                                locationMatch,
+                                worker_id || -1
+                            );
+                        }
                         
                         console.log(`⏰ Availability result:`, JSON.stringify(slotResult, null, 2));
                     } catch (error) {
-                        console.error(`❌ Error calling getAvailableTimesAndDays:`, error);
+                        console.error(`❌ Error getting availability:`, error);
                         slotResult = { success: false, error: error.message };
                     }
                     
@@ -539,15 +588,32 @@ router.post('/', async (req, res) => {
                     
                     // Check if we have real availability
                     if (slotResult.success && slotResult.found && slotResult.date) {
-                        response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
-                        
-                        // Add alternative times from the same day
-                        if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
-                            const alternatives = slotResult.alternativeSlots.slice(0, 2);
-                            response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                        if (slotResult.timeSpecificRequest && requestedTime) {
+                            // Handle time-specific responses
+                            if (slotResult.hasRequestedTime) {
+                                response += `Áno, ${requestedTime} je dostupné dňa ${slotResult.date}`;
+                                if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                                    response += `\nĎalšie časy okolo tejto hodiny: ${slotResult.alternativeSlots.join(', ')}`;
+                                }
+                            } else {
+                                response += `${requestedTime} nie je dostupné, ale máme tieto časy blízko:`;
+                                response += `\n${slotResult.date}: ${slotResult.time}`;
+                                if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                                    response += `, ${slotResult.alternativeSlots.join(', ')}`;
+                                }
+                            }
+                        } else {
+                            // Regular response
+                            response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
+                            
+                            // Show more alternative times for better user experience
+                            if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                                const alternatives = slotResult.alternativeSlots.slice(0, 4);
+                                response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                            }
                         }
                         
-                        // Add next day info if available
+                        // Add day context
                         if (slotResult.daysFromNow === 0) {
                             response = response.replace(slotResult.date, 'dnes');
                         } else if (slotResult.daysFromNow === 1) {
@@ -587,12 +653,23 @@ router.post('/', async (req, res) => {
                     console.log('🎯 ElevenLabs booking attempt:', bookingParams);
                     
                     // Validate required fields
-                    const required = ['serviceId', 'date', 'time', 'name'];
+                    const required = ['serviceId', 'date', 'time', 'name', 'phone'];
                     const missing = required.filter(field => !bookingParams[field]);
+                    
+                    // Check if email is missing or invalid
+                    if (!bookingParams.email || !bookingParams.email.includes('@')) {
+                        missing.push('email');
+                    }
                     
                     if (missing.length > 0) {
                         res.set('Content-Type', 'text/plain');
-                        return res.send(`Chýbajú údaje pre rezerváciu: ${missing.join(', ')}`);
+                        if (missing.includes('email')) {
+                            return res.send("Pre dokončenie rezervácie potrebujem váš email. Môžete mi ho prosím poskytnúť?");
+                        } else if (missing.includes('phone')) {
+                            return res.send("Pre dokončenie rezervácie potrebujem vaše telefónne číslo. Môžete mi ho prosím poskytnúť?");
+                        } else {
+                            return res.send(`Chýbajú údaje pre rezerváciu: ${missing.join(', ')}`);
+                        }
                     }
                     
                     // Split name into first and last name
@@ -609,8 +686,8 @@ router.post('/', async (req, res) => {
                         hour: bookingParams.time,
                         firstName: firstName,
                         lastName: lastName,
-                        email: bookingParams.email || 'noemail@refresh-studio.sk',
-                        phone: bookingParams.phone || '+421000000000',
+                        email: bookingParams.email,
+                        phone: bookingParams.phone,
                         note: `Rezervácia cez ElevenLabs agenta`,
                         acceptTerms: true
                     });
