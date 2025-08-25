@@ -644,9 +644,11 @@ router.post('/', async (req, res) => {
                     // Parse booking parameters
                     const bookingParams = {};
                     search_term.split(',').forEach(param => {
-                        const [key, value] = param.split(':');
-                        if (key && value) {
-                            bookingParams[key.trim()] = value.trim();
+                        const colonIndex = param.indexOf(':');
+                        if (colonIndex > 0) {
+                            const key = param.substring(0, colonIndex).trim();
+                            const value = param.substring(colonIndex + 1).trim();
+                            bookingParams[key] = value;
                         }
                     });
                     
