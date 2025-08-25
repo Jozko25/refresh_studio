@@ -767,9 +767,9 @@ router.post('/', async (req, res) => {
                     
                 } catch (error) {
                     console.error('❌ Booking error:', error.message);
-                    // Email notification is still sent even on error, so give user a positive message
+                    // Give generic positive message since booking details might not be parsed yet
                     res.set('Content-Type', 'text/plain');
-                    return res.send(`📝 Vaša rezervácia bola zaznamenaná na ${bookingParams.date} o ${bookingParams.time}. Náš tím vás bude kontaktovať na telefón ${bookingParams.phone} pre potvrdenie termínu.`);
+                    return res.send(`📝 Vaša rezervácia bola zaznamenaná. Náš tím vás bude kontaktovať pre potvrdenie termínu.`);
                 }
                 break;
 
