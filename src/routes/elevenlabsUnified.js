@@ -1180,14 +1180,27 @@ router.post('/', async (req, res) => {
                 
                 // Extract all possible parameters from the agent
                 const action = req.body.action || 'search'; // search, check_availability, confirm
-                const service = req.body.service || search_term;
+                const service = req.body.service || req.body.service_name || search_term;
                 const customerAge = req.body.age || req.body.customer_age;
                 const customerName = req.body.name || req.body.customer_name;
-                const customerEmail = req.body.email || req.body.customer_email;
+                let customerEmail = req.body.email || req.body.customer_email || '';
                 const customerPhone = req.body.phone || req.body.customer_phone;
                 const requestedDate = req.body.date;
                 const requestedTime = req.body.time;
                 const requestedLocation = req.body.location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
+                
+                // Fix Slovak "zavinac" issue - replace common Slovak words for @ 
+                if (customerEmail) {
+                    customerEmail = customerEmail
+                        .replace(/\szavinac\s/gi, '@')
+                        .replace(/\szavináč\s/gi, '@')
+                        .replace(/\sat\s/gi, '@')
+                        .replace(/\s@\s/g, '@') // Remove spaces around @
+                        .trim();
+                }
+                
+                // Store the selected service info globally for the booking
+                let selectedServiceInfo = req.body.selected_service || null;
                 
                 console.log('🔧 refresh_booking request:', {
                     action,
@@ -1219,15 +1232,29 @@ router.post('/', async (req, res) => {
                 
                 // If we have name and phone, this is a booking confirmation
                 if (customerName && customerPhone) {
-                    // Find the service first
-                    const searchResult = await BookioDirectService.searchServices(service + (customerAge ? ` vek ${customerAge}` : ''));
+                    let selectedService;
                     
-                    if (!searchResult.success || searchResult.found === 0) {
+                    // Use the selected service info if available, otherwise search for it
+                    if (selectedServiceInfo && selectedServiceInfo.serviceId) {
+                        selectedService = selectedServiceInfo;
+                    } else if (service) {
+                        // Find the service first based on the original search
+                        const searchTerm = service + (customerAge ? ` vek ${customerAge}` : '');
+                        console.log(`🔍 Searching for service to book: "${searchTerm}"`);
+                        const searchResult = await BookioDirectService.searchServices(searchTerm);
+                        
+                        if (!searchResult.success || searchResult.found === 0) {
+                            res.set('Content-Type', 'text/plain');
+                            return res.send(`Ľutujem, nenašla som službu "${service}". Môžete skúsiť iný názov?`);
+                        }
+                        
+                        selectedService = searchResult.services[0];
+                    } else {
+                        // No service info available
                         res.set('Content-Type', 'text/plain');
-                        return res.send(`Ľutujem, nenašla som službu "${service}". Môžete skúsiť iný názov?`);
+                        return res.send("Prepáčte, musím vedieť akú službu si želáte rezervovať.");
                     }
                     
-                    const selectedService = searchResult.services[0];
                     const bookingDate = requestedDate || new Date().toISOString().split('T')[0].split('-').reverse().join('.');
                     const bookingTime = requestedTime || '10:00';
                     
@@ -1291,6 +1318,7 @@ router.post('/', async (req, res) => {
                     
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
+                    // Include service info in response for ElevenLabs to track
                     response = `${selectedService.name}\n`;
                     response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
                     response += `💰 ${selectedService.price}\n`;
@@ -1302,6 +1330,9 @@ router.post('/', async (req, res) => {
                             response += `\nĎalšie časy: ${slotResult.alternativeSlots.slice(0, 2).join(', ')}`;
                         }
                         response += `\n\nChcete si rezervovať nejaký termín?`;
+                        
+                        // Store service info for next call
+                        console.log(`✅ Selected service for booking: ${selectedService.name} (ID: ${selectedService.serviceId})`);
                     } else {
                         response += `Momentálne nie sú dostupné žiadne voľné termíny.`;
                     }
