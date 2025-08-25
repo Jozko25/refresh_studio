@@ -112,51 +112,57 @@ class LocationBookioService {
         }
 
         try {
-            // Get available slots
+            // Get available slots using the correct widget API
             const today = new Date();
-            const endDate = new Date(today);
-            endDate.setMonth(today.getMonth() + 3); // Look 3 months ahead
-
-            const response = await axios.get(`${this.baseUrl}/${locationInfo.facility}/api/availability_slots`, {
-                params: {
-                    service_id: serviceId,
-                    worker_id: workerId,
-                    date_from: this.formatDate(today),
-                    date_to: this.formatDate(endDate)
-                },
-                timeout: 15000
-            });
-
-            const slots = response.data.slots || [];
             
-            if (slots.length === 0) {
-                return { success: true, found: false };
+            // Try multiple days starting from today
+            for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+                const checkDate = new Date(today);
+                checkDate.setDate(today.getDate() + dayOffset);
+                
+                const formattedDateTime = `${this.formatDate(checkDate)} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+                
+                const response = await axios.post(`${this.baseUrl}/widget/api/allowedTimes?lang=sk`, {
+                    serviceId: parseInt(serviceId),
+                    workerId: parseInt(workerId) || 18204, // Default worker
+                    date: formattedDateTime,
+                    lang: 'sk',
+                    count: 1,
+                    participantsCount: 0,
+                    addons: []
+                }, {
+                    timeout: 15000,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const times = response.data?.data?.times?.all || [];
+                
+                if (times.length > 0) {
+                    // Found available slots for this day
+                    const earliestTime = times[0];
+                    const slotDate = checkDate;
+                    const daysFromNow = dayOffset;
+                    
+                    // Get alternative times from the same day
+                    const alternativeSlots = times.slice(1, 3).map(time => time.name);
+                    
+                    return {
+                        success: true,
+                        found: true,
+                        date: this.formatDate(slotDate),
+                        time: earliestTime.name,
+                        daysFromNow,
+                        totalSlots: times.length,
+                        alternativeSlots,
+                        location: locationInfo.name
+                    };
+                }
             }
-
-            // Find earliest slot
-            const earliestSlot = slots[0];
-            const slotDate = new Date(earliestSlot.datetime);
-            const daysFromNow = Math.ceil((slotDate - today) / (1000 * 60 * 60 * 24));
-
-            // Get alternative slots for same day
-            const sameDay = slots.filter(slot => 
-                slot.datetime.startsWith(earliestSlot.datetime.split('T')[0])
-            ).slice(1, 4);
-
-            return {
-                success: true,
-                found: true,
-                date: this.formatDate(slotDate),
-                time: slotDate.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' }),
-                daysFromNow,
-                totalSlots: slots.filter(slot => 
-                    slot.datetime.startsWith(earliestSlot.datetime.split('T')[0])
-                ).length,
-                alternativeSlots: sameDay.map(slot => 
-                    new Date(slot.datetime).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
-                ),
-                location: locationInfo.name
-            };
+            
+            // No slots found in the next 30 days
+            return { success: true, found: false };
 
         } catch (error) {
             console.error(`❌ Error finding slots for ${location}:`, error.message);
