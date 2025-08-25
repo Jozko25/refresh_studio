@@ -82,7 +82,7 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Bookio Webhook API server running on port ${PORT}`);
+  console.log(`🚀 Bookio Webhook API server running on port ${PORT} - v${Date.now()}`);
   console.log(`📋 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`🔗 Original Facility: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
   console.log(`🏥 REFRESH Clinic: refresh-laserove-a-esteticke-studio-zu0yxr5l`);
