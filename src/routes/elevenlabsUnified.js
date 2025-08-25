@@ -16,7 +16,7 @@ const router = express.Router();
  * Simple email notification for booking requests
  */
 async function sendBookingNotificationEmail(bookingParams) {
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER || 'janko.tank.poi@gmail.com',
@@ -37,14 +37,17 @@ async function sendBookingNotificationEmail(bookingParams) {
 Please process this booking manually in the Bookio widget.
     `;
 
-    await transporter.sendMail({
+    console.log('📧 Attempting to send email to janko.tank.poi@gmail.com...');
+    
+    const mailOptions = {
         from: process.env.EMAIL_USER || 'janko.tank.poi@gmail.com',
         to: 'janko.tank.poi@gmail.com',
         subject: `🚨 New Booking: ${bookingParams.name} - ${bookingParams.date} ${bookingParams.time}`,
         text: emailContent
-    });
-
-    console.log('📧 Booking notification email sent to janko.tank.poi@gmail.com');
+    };
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log('📧 Email sent successfully! Message ID:', result.messageId);
 }
 
 /**
