@@ -1314,10 +1314,30 @@ router.post('/', async (req, res) => {
                 // Otherwise, search for services and show availability
                 const searchTerm = service + (customerAge ? ` vek ${customerAge}` : '') + (requestedLocation ? ` ${requestedLocation}` : '');
                 
-                // Extract time request from the original query
-                const timePattern = /(\d{1,2}):?(\d{2})/;
-                const timeMatch = service.match(timePattern) || (req.body.search_term && req.body.search_term.match(timePattern));
-                const requestedTimeFromQuery = timeMatch ? `${timeMatch[1]}:${timeMatch[2] || '00'}` : requestedTime;
+                // Extract time request from the original query with improved Slovak patterns
+                const timePattern = /(\d{1,2}):?(\d{2})|(\d{1,2})\s*(?:hodín|hodina|hodiny|dlomu|o\s*(\d{1,2}))/i;
+                const simpleTimePattern = /\bo\s*(\d{1,2})\b|\b(\d{1,2})\s*(?:hodín|hodina|hodiny|dlomu)/i;
+                
+                // Check multiple sources for time requests
+                const fullQuery = `${service} ${req.body.search_term || ''} ${search_term || ''}`.toLowerCase();
+                console.log(`🔍 Checking for time in: "${fullQuery}"`);
+                
+                let timeMatch = service.match(timePattern) || 
+                               (req.body.search_term && req.body.search_term.match(timePattern)) ||
+                               fullQuery.match(simpleTimePattern);
+                
+                let requestedTimeFromQuery = null;
+                if (timeMatch) {
+                    // Handle different match groups
+                    const hour = timeMatch[1] || timeMatch[3] || timeMatch[4] || timeMatch[2];
+                    if (hour) {
+                        requestedTimeFromQuery = `${hour}:00`;
+                        console.log(`🕐 Extracted time: ${requestedTimeFromQuery} from match: ${JSON.stringify(timeMatch)}`);
+                    }
+                }
+                
+                // Also check the original requestedTime parameter
+                const finalRequestedTime = requestedTimeFromQuery || requestedTime;
                 
                 const searchResult = await BookioDirectService.searchServices(searchTerm);
                 
@@ -1326,8 +1346,8 @@ router.post('/', async (req, res) => {
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
                     // Check if user is asking for a specific time
-                    if (requestedTimeFromQuery) {
-                        console.log(`🕐 Time-specific request detected: ${requestedTimeFromQuery}`);
+                    if (finalRequestedTime) {
+                        console.log(`🕐 Time-specific request detected: ${finalRequestedTime}`);
                         
                         try {
                             // Get availability for the specific time request
@@ -1336,30 +1356,30 @@ router.post('/', async (req, res) => {
                             );
                             
                             if (fullAvailability.success && fullAvailability.availableTimes) {
-                                const hasRequestedTime = fullAvailability.availableTimes.includes(requestedTimeFromQuery);
+                                const hasRequestedTime = fullAvailability.availableTimes.includes(finalRequestedTime);
                                 
                                 if (hasRequestedTime) {
-                                    response = `Áno, ${requestedTimeFromQuery} je dostupné!\n`;
+                                    response = `Áno, ${finalRequestedTime} je dostupné!\n`;
                                     response += `📋 ${selectedService.name}\n`;
-                                    response += `📅 ${fullAvailability.soonestDate} o ${requestedTimeFromQuery}\n`;
+                                    response += `📅 ${fullAvailability.soonestDate} o ${finalRequestedTime}\n`;
                                     response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
                                     response += `💰 ${selectedService.price}\n\n`;
                                     response += `Chcete si rezervovať tento termín?`;
                                 } else {
                                     const closestTimes = fullAvailability.availableTimes.filter(time => {
                                         const [hour, minute] = time.split(':').map(Number);
-                                        const [reqHour, reqMinute] = requestedTimeFromQuery.split(':').map(Number);
+                                        const [reqHour, reqMinute] = finalRequestedTime.split(':').map(Number);
                                         const timeMinutes = hour * 60 + minute;
                                         const reqMinutes = reqHour * 60 + reqMinute;
                                         return Math.abs(timeMinutes - reqMinutes) <= 120; // Within 2 hours
                                     }).slice(0, 4);
                                     
-                                    response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné.\n`;
+                                    response = `Prepáčte, ${finalRequestedTime} nie je dostupné.\n`;
                                     response += `📋 ${selectedService.name}\n`;
                                     response += `💰 ${selectedService.price}\n\n`;
                                     
                                     if (closestTimes.length > 0) {
-                                        response += `Dostupné časy blízko ${requestedTimeFromQuery}:\n`;
+                                        response += `Dostupné časy blízko ${finalRequestedTime}:\n`;
                                         closestTimes.forEach(time => {
                                             response += `📅 ${fullAvailability.soonestDate} o ${time}\n`;
                                         });
@@ -1369,11 +1389,11 @@ router.post('/', async (req, res) => {
                                     }
                                 }
                             } else {
-                                response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné. Momentálne nie sú dostupné žiadne termíny pre túto službu.`;
+                                response = `Prepáčte, ${finalRequestedTime} nie je dostupné. Momentálne nie sú dostupné žiadne termíny pre túto službu.`;
                             }
                         } catch (error) {
                             console.error('❌ Error checking specific time:', error);
-                            response = `Prepáčte, ${requestedTimeFromQuery} nie je dostupné. Skúste iný termín.`;
+                            response = `Prepáčte, ${finalRequestedTime} nie je dostupné. Skúste iný termín.`;
                         }
                     } else {
                         // Regular request - show soonest available time
