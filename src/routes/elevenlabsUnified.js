@@ -519,7 +519,7 @@ router.post('/', async (req, res) => {
                             response += `👩 ${service.name}: ${service.price}\n`;
                         });
                         
-                        response += `\nAký je váš vek alebo ktorá možnosť vás zaujíma?`;
+                        response += `\nAká veková kategória je pre vás najvhodnejšia alebo ktorá možnosť vás zaujíma?`;
                         
                         res.set('Content-Type', 'text/plain');
                         return res.send(response);
