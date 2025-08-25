@@ -312,13 +312,25 @@ router.post('/', async (req, res) => {
         // Handle ElevenLabs function_call format
         if (req.body.function_call && req.body.function_call.name) {
             tool_name = req.body.function_call.name;
-            const params = JSON.parse(req.body.function_call.parameters);
-            search_term = params.search_term;
-            service_id = params.service_id;
-            worker_id = params.worker_id || -1;
-            date = params.date;
-            time = params.time;
-            location = params.location;
+            // Try to parse parameters if they're a JSON string
+            if (typeof req.body.function_call.parameters === 'string') {
+                try {
+                    const params = JSON.parse(req.body.function_call.parameters);
+                    search_term = params.search_term;
+                    service_id = params.service_id;
+                    worker_id = params.worker_id || -1;
+                    date = params.date;
+                    time = params.time;
+                    location = params.location;
+                } catch (e) {
+                    console.log('Failed to parse function_call.parameters:', e);
+                }
+            }
+        }
+        
+        // Also check if tool is specified directly in body (for refresh_booking)
+        if (!tool_name && req.body.tool) {
+            tool_name = req.body.tool;
         }
 
         if (!tool_name) {
@@ -1162,7 +1174,144 @@ router.post('/', async (req, res) => {
                 });
                 break;
 
-
+            case 'refresh_booking':
+                // All-in-one booking tool for ElevenLabs agent
+                // Can handle: search, availability check, or booking confirmation
+                
+                // Extract all possible parameters from the agent
+                const action = req.body.action || 'search'; // search, check_availability, confirm
+                const service = req.body.service || search_term;
+                const customerAge = req.body.age || req.body.customer_age;
+                const customerName = req.body.name || req.body.customer_name;
+                const customerEmail = req.body.email || req.body.customer_email;
+                const customerPhone = req.body.phone || req.body.customer_phone;
+                const requestedDate = req.body.date;
+                const requestedTime = req.body.time;
+                const requestedLocation = req.body.location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
+                
+                console.log('🔧 refresh_booking request:', {
+                    action,
+                    service,
+                    age: customerAge,
+                    location: requestedLocation,
+                    name: customerName,
+                    email: customerEmail,
+                    phone: customerPhone,
+                    date: requestedDate,
+                    time: requestedTime
+                });
+                
+                // Handle different actions
+                if (!service) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send("Nerozumiem, akú službu hľadáte. Môžete byť konkrétnejší?");
+                }
+                
+                // Check if location is needed
+                if (!requestedLocation) {
+                    response = `V ktorom meste si želáte rezerváciu?\n\n`;
+                    response += `🏢 Bratislava - Lazaretská 13\n`;
+                    response += `🏢 Pezinok\n\n`;
+                    response += `Povedzte "Bratislava" alebo "Pezinok".`;
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+                
+                // If we have name and phone, this is a booking confirmation
+                if (customerName && customerPhone) {
+                    // Find the service first
+                    const searchResult = await BookioDirectService.searchServices(service + (customerAge ? ` vek ${customerAge}` : ''));
+                    
+                    if (!searchResult.success || searchResult.found === 0) {
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(`Ľutujem, nenašla som službu "${service}". Môžete skúsiť iný názov?`);
+                    }
+                    
+                    const selectedService = searchResult.services[0];
+                    const bookingDate = requestedDate || new Date().toISOString().split('T')[0].split('-').reverse().join('.');
+                    const bookingTime = requestedTime || '10:00';
+                    
+                    // Log booking for manual processing
+                    console.log('🚨 NEW BOOKING REQUEST FROM REFRESH_BOOKING:');
+                    console.log('👤 Customer:', customerName);
+                    console.log('📧 Email:', customerEmail || 'not provided');
+                    console.log('📱 Phone:', customerPhone);
+                    console.log('🏥 Service:', selectedService.name);
+                    console.log('📅 Date:', bookingDate);
+                    console.log('🕐 Time:', bookingTime);
+                    console.log('📍 Location:', requestedLocation);
+                    console.log('🚨 === END BOOKING REQUEST ===');
+                    
+                    // Get location info for Zapier
+                    const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
+                    
+                    // Send to Zapier webhook
+                    try {
+                        const webhookPayload = {
+                            customer_name: customerName,
+                            customer_email: customerEmail || 'no-email@example.com',
+                            customer_phone: customerPhone,
+                            service_id: selectedService.serviceId,
+                            service_name: selectedService.name,
+                            date: bookingDate,
+                            time: bookingTime,
+                            location: locationInfo ? locationInfo.name : requestedLocation,
+                            location_address: locationInfo ? locationInfo.address : requestedLocation,
+                            source: 'ElevenLabs Voice Agent (refresh_booking)',
+                            booking_link: locationInfo ? locationInfo.widget_url : 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                        };
+                        
+                        await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', webhookPayload, {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        console.log('📨 Booking data sent to Zapier webhook successfully');
+                    } catch (zapierError) {
+                        console.log('📨 Zapier webhook failed (non-critical):', zapierError.message);
+                    }
+                    
+                    response = `Perfektné! Vaša rezervácia bola zaznamenaná.\n`;
+                    response += `📋 ${selectedService.name}\n`;
+                    response += `📅 ${bookingDate} o ${bookingTime}\n`;
+                    response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n\n`;
+                    response += `Náš tím vás bude kontaktovať pre potvrdenie termínu.`;
+                    
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+                
+                // Otherwise, search for services and show availability
+                const searchTerm = service + (customerAge ? ` vek ${customerAge}` : '') + (requestedLocation ? ` ${requestedLocation}` : '');
+                const searchResult = await BookioDirectService.searchServices(searchTerm);
+                
+                if (searchResult.success && searchResult.found > 0) {
+                    const selectedService = searchResult.services[0];
+                    
+                    // Get availability
+                    const slotResult = await BookioDirectService.findSoonestSlot(selectedService.serviceId);
+                    
+                    const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
+                    
+                    response = `${selectedService.name}\n`;
+                    response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
+                    response += `💰 ${selectedService.price}\n`;
+                    response += `⏱️ ${selectedService.duration}\n\n`;
+                    
+                    if (slotResult.success && slotResult.found) {
+                        response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
+                        if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                            response += `\nĎalšie časy: ${slotResult.alternativeSlots.slice(0, 2).join(', ')}`;
+                        }
+                        response += `\n\nChcete si rezervovať nejaký termín?`;
+                    } else {
+                        response += `Momentálne nie sú dostupné žiadne voľné termíny.`;
+                    }
+                } else {
+                    response = `Ľutujem, nenašla som službu "${service}". Môžete skúsiť iný názov?`;
+                }
+                
+                res.set('Content-Type', 'text/plain');
+                return res.send(response);
+                break;
 
             default:
                 res.set('Content-Type', 'application/json');
@@ -1170,7 +1319,7 @@ router.post('/', async (req, res) => {
                     success: false,
                     type: "unknown_tool",
                     message: `Neznámy nástroj: ${tool_name}`,
-                    available_tools: ["quick_booking", "select_location", "location_booking", "get_services_overview", "get_opening_hours", "search_service", "find_soonest_slot", "confirm_booking"]
+                    available_tools: ["refresh_booking", "quick_booking", "select_location", "location_booking", "get_services_overview", "get_opening_hours", "search_service", "search_services", "find_soonest_slot", "confirm_booking"]
                 });
         }
 
