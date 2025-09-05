@@ -19,10 +19,10 @@
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "REQUIRED: Specific tool function. Use: \"refresh_booking\" (main booking tool - searches services, checks availability, handles reservations), \"get_services_overview\" (popular services list), \"get_opening_hours\" (hours/location info). ALWAYS use refresh_booking for service searches and booking requests.",
+          "description": "Tool function. Use: \"refresh_booking\" (main booking tool - searches services, checks availability, handles reservations), \"get_services_overview\" (popular services list), \"get_opening_hours\" (hours/location info). Defaults to refresh_booking for service searches and booking requests.",
           "dynamic_variable": "",
-          "constant_value": "",
-          "required": true
+          "constant_value": "refresh_booking",
+          "required": false
         },
         {
           "id": "service",

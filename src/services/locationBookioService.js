@@ -1,6 +1,7 @@
 import axios from 'axios';
 import BookioDirectService from './bookioDirectService.js';
 import serviceCache from './serviceCache.js';
+import LLMServiceMatcher from './llmServiceMatcher.js';
 
 /**
  * Location-aware Bookio Service
@@ -8,6 +9,7 @@ import serviceCache from './serviceCache.js';
  */
 class LocationBookioService {
     constructor() {
+        this.llmMatcher = new LLMServiceMatcher();
         this.locations = {
             bratislava: {
                 facility: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
@@ -109,7 +111,7 @@ class LocationBookioService {
     }
 
     /**
-     * Search services for specific location
+     * Search services for specific location using LLM matching
      */
     async searchServices(searchTerm, location = 'bratislava') {
         // Get all services (cached or fresh)
@@ -122,8 +124,35 @@ class LocationBookioService {
         const locationInfo = this.getLocationInfo(location);
 
         try {
+            // Try LLM matching first if available
+            if (this.llmMatcher && this.llmMatcher.isAvailable()) {
+                console.log(`🤖 Using LLM to match: "${searchTerm}" against ${services.length} services for ${location}`);
+                
+                const llmResult = await this.llmMatcher.matchService(searchTerm, services);
+                if (llmResult.success) {
+                    console.log(`✅ LLM matched: "${searchTerm}" → "${llmResult.service.title}"`);
+                    
+                    return {
+                        success: true,
+                        found: 1,
+                        services: [{
+                            serviceId: llmResult.service.serviceId,
+                            name: llmResult.service.title,
+                            price: llmResult.service.price,
+                            duration: llmResult.service.durationString,
+                            categoryName: llmResult.service.categoryName || 'SLUŽBY',
+                            location: locationInfo.name,
+                            score: 100,
+                            method: 'llm'
+                        }],
+                        location: locationInfo.name
+                    };
+                } else {
+                    console.log(`❌ LLM matching failed: ${llmResult.error}, falling back to text search`);
+                }
+            }
             
-            // Search logic with accent-insensitive matching
+            // Fallback to text matching if LLM fails
             const normalizedSearchTerm = this.normalizeText(searchTerm);
             const searchWords = normalizedSearchTerm.split(' ').filter(word => word.length > 2);
             const scoredServices = [];
@@ -148,9 +177,10 @@ class LocationBookioService {
                         name: service.title,
                         price: service.price,
                         duration: service.durationString,
-                        categoryName: 'LASEROVÁ EPILÁCIA', // Will be filled properly later
+                        categoryName: service.categoryName || 'SLUŽBY',
                         location: locationInfo.name,
-                        score
+                        score,
+                        method: 'text'
                     });
                 }
             }
