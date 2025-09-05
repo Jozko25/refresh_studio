@@ -1422,22 +1422,50 @@ router.post('/', async (req, res) => {
                             response = `Prepáčte, ${finalRequestedTime} nie je dostupné. Skúste iný termín.`;
                         }
                     } else {
-                        // Regular request - show soonest available time
+                        // Regular request - show soonest available time with real availability
                         const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                         
-                        // Include service info in response for ElevenLabs to track
-                        const fullServiceName = selectedService.categoryName ? 
-                            `${selectedService.categoryName} - ${selectedService.name}` : 
-                            selectedService.name;
-                        
-                        response = `${fullServiceName}\n`;
-                        response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
-                        response += `💰 ${selectedService.price}\n`;
-                        response += `⏱️ ${selectedService.duration}\n\n`;
-                        
-                        // Direct to booking widget for general queries
-                        response += `Pre rezerváciu a overenie dostupných termínov pokračujte cez náš rezervačný systém.\n`;
-                        response += `Chcete pokračovať s rezerváciou?`;
+                        try {
+                            // Get real availability for the service
+                            const BookioDirectService = await import('../services/bookioDirectService.js');
+                            const slotResult = await BookioDirectService.default.findSoonestSlot(
+                                selectedService.serviceId, -1
+                            );
+                            
+                            response = `${selectedService.name}\n`;
+                            response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
+                            response += `💰 ${selectedService.price}\n`;
+                            response += `⏱️ ${selectedService.duration}\n\n`;
+                            
+                            // Show real availability
+                            if (slotResult.success && slotResult.found && slotResult.date) {
+                                if (slotResult.daysFromNow === 0) {
+                                    response += `Najbližší termín: dnes o ${slotResult.time}`;
+                                } else if (slotResult.daysFromNow === 1) {
+                                    response += `Najbližší termín: zajtra (${slotResult.date}) o ${slotResult.time}`;
+                                } else {
+                                    response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
+                                }
+                                
+                                // Show more alternative times for better user experience
+                                if (slotResult.alternativeSlots && slotResult.alternativeSlots.length > 0) {
+                                    const alternatives = slotResult.alternativeSlots.slice(0, 4);
+                                    response += `\nĎalšie časy: ${alternatives.join(', ')}`;
+                                }
+                                
+                                response += `\n\nChcete si rezervovať tento termín?`;
+                            } else {
+                                response += `Momentálne nie sú dostupné žiadne voľné termíny v najbližších dňoch.\n`;
+                                response += `Skúste neskôr alebo kontaktujte našu recepciu.`;
+                            }
+                        } catch (error) {
+                            console.error('❌ Error getting availability:', error);
+                            response = `${selectedService.name}\n`;
+                            response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
+                            response += `💰 ${selectedService.price}\n`;
+                            response += `⏱️ ${selectedService.duration}\n\n`;
+                            response += `Pre overenie dostupnosti kontaktujte našu recepciu.`;
+                        }
                     }
                     
                     // Store service info for next call
