@@ -1439,6 +1439,15 @@ router.post('/', async (req, res) => {
                             response += `💰 ${selectedService.price}\n`;
                             response += `⏱️ ${selectedService.duration}\n\n`;
                             
+                            // Get and show available workers for this service
+                            const workersResult = await LocationBookioService.default.getWorkersForService(
+                                selectedService.serviceId, requestedLocation
+                            );
+                            if (workersResult.success && workersResult.workers.length > 0) {
+                                const workerNames = workersResult.workers.map(w => w.name).join(', ');
+                                response += `👥 Dostupní zamestnanci: ${workerNames}\n\n`;
+                            }
+                            
                             // Handle worker not found error
                             if (!slotResult.success && slotResult.availableWorkers) {
                                 response = `${slotResult.message}\n\nMôžete si vybrať z dostupných zamestnancov pre túto službu.`;
