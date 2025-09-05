@@ -112,13 +112,19 @@ Match the customer's request to the most appropriate service. Follow this EXACT 
 1. **EXACT NAME MATCHES** (highest priority)
    - Look for identical words in service names
 
-2. **SLOVAK ACCENT VARIATIONS AND PRONUNCIATION** 
+2. **BODY PART & GENDER MATCHING FOR LASER HAIR REMOVAL**
+   - "bokombrady", "fúzy", "brada" → match "tvár" services
+   - "podpazušie" → match "podpazušie" services  
+   - Always check for gender: "páni" for men, default for women
+   - "bokombrady páni" should match "celá tvár páni"
+   
+3. **SLOVAK ACCENT VARIATIONS AND PRONUNCIATION** 
    - Slovak speakers often adapt foreign words with Slovak endings (e.g., "exceláže" likely refers to "EXCELLAGE")
    - Consider phonetic similarities and common Slovak pronunciation patterns
    - Look for accent variations: á→a, é→e, í→i, ó→o, ú→u, ý→y, ň→n, ť→t, ď→d, ľ→l, č→c, š→s, ž→z
    - "institut estéderm" matches "Institut Esthederm"
 
-3. **AGE-APPROPRIATE SELECTION**
+4. **AGE-APPROPRIATE SELECTION**
    - For ages 16-25: prefer BASIC/ZÁKLAD services, AKNÉ treatments
    - For ages 26-35: prefer standard services without "POKROČILÉ" or "ADVANCED"
    - For ages 36+: any service level appropriate
