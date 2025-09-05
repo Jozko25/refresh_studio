@@ -171,9 +171,72 @@ class LocationBookioService {
     }
 
     /**
+     * Get available workers for a service
+     */
+    async getWorkersForService(serviceId, location = 'bratislava') {
+        const locationInfo = this.getLocationInfo(location);
+        if (!locationInfo) {
+            return { success: false, message: 'Neznáme miesto' };
+        }
+
+        try {
+            const response = await axios.post(`${this.baseUrl}/widget/api/workers?lang=sk`, {
+                serviceId: parseInt(serviceId),
+                facility: locationInfo.facility,
+                lang: 'sk'
+            }, {
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const workers = response.data?.data || [];
+            console.log(`👥 Found ${workers.length} workers for service ${serviceId} in ${location}`);
+            
+            return {
+                success: true,
+                workers: workers.map(worker => ({
+                    workerId: worker.workerId,
+                    name: worker.name,
+                    fullName: worker.fullName || worker.name
+                }))
+            };
+
+        } catch (error) {
+            console.error(`❌ Error getting workers for service ${serviceId} in ${location}:`, error.message);
+            return { success: false, message: 'Chyba pri načítaní zamestnancov' };
+        }
+    }
+
+    /**
+     * Find worker by name (fuzzy matching)
+     */
+    findWorkerByName(workers, requestedName) {
+        if (!requestedName || !workers.length) return null;
+
+        const normalized = this.normalizeText(requestedName);
+        console.log(`🔍 Looking for worker: "${requestedName}" (normalized: "${normalized}")`);
+
+        // Try exact match first
+        let worker = workers.find(w => 
+            this.normalizeText(w.name).includes(normalized) ||
+            this.normalizeText(w.fullName).includes(normalized)
+        );
+
+        if (worker) {
+            console.log(`✅ Found worker: ${worker.name} (ID: ${worker.workerId})`);
+            return worker;
+        }
+
+        console.log(`❌ No worker found matching "${requestedName}"`);
+        return null;
+    }
+
+    /**
      * Find soonest slot for specific location
      */
-    async findSoonestSlot(serviceId, location = 'bratislava', workerId = -1, skipSlots = 0) {
+    async findSoonestSlot(serviceId, location = 'bratislava', workerId = -1, skipSlots = 0, requestedWorkerName = null) {
         const locationInfo = this.getLocationInfo(location);
         if (!locationInfo) {
             return { success: false, message: 'Neznáme miesto' };
@@ -183,27 +246,36 @@ class LocationBookioService {
             // Get available slots using the correct widget API
             const today = new Date();
             
-            // If no specific worker provided, get workers for this service and location
+            // Handle worker selection
             if (workerId === -1) {
-                const workersResponse = await axios.post(`${this.baseUrl}/widget/api/workers?lang=sk`, {
-                    serviceId: parseInt(serviceId),
-                    facility: locationInfo.facility,
-                    lang: 'sk'
-                }, {
-                    timeout: 10000,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const workers = workersResponse.data?.data || [];
-                if (workers.length > 0) {
-                    // Use first available worker
-                    workerId = workers[0].workerId;
-                    console.log(`👤 Using worker ${workerId} for ${location} service ${serviceId}`);
-                } else {
+                // Get all workers for this service
+                const workersResult = await this.getWorkersForService(serviceId, location);
+                if (!workersResult.success || workersResult.workers.length === 0) {
                     console.log(`⚠️ No workers found for service ${serviceId} in ${location}`);
                     workerId = -1; // Keep default
+                } else {
+                    const workers = workersResult.workers;
+                    
+                    // If specific worker requested, try to find them
+                    if (requestedWorkerName) {
+                        const requestedWorker = this.findWorkerByName(workers, requestedWorkerName);
+                        if (requestedWorker) {
+                            workerId = requestedWorker.workerId;
+                            console.log(`👤 Using requested worker: ${requestedWorker.name} (ID: ${workerId})`);
+                        } else {
+                            // Worker not found, return error with available workers
+                            const workerNames = workers.map(w => w.name).join(', ');
+                            return {
+                                success: false,
+                                message: `Zamestnanec "${requestedWorkerName}" nie je dostupný pre túto službu. Dostupní zamestnanci: ${workerNames}`,
+                                availableWorkers: workers
+                            };
+                        }
+                    } else {
+                        // Use first available worker
+                        workerId = workers[0].workerId;
+                        console.log(`👤 Using first available worker: ${workers[0].name} (ID: ${workerId})`);
+                    }
                 }
             }
             

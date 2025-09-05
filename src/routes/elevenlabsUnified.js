@@ -1193,6 +1193,7 @@ router.post('/', async (req, res) => {
                 const skipSlots = req.body.skip_slots || skip_slots || 0;
                 const requestedDate = req.body.date || date;
                 const requestedTime = req.body.time || time;
+                const requestedWorker = req.body.worker || req.body.worker_name || req.body.zamestnanec;
                 const requestedLocation = req.body.location || location || preferred_location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
                 
                 // Fix Slovak "zavinac" issue - replace common Slovak words for @ 
@@ -1430,13 +1431,19 @@ router.post('/', async (req, res) => {
                             // Get real availability for the service using facility-aware service
                             const LocationBookioService = await import('../services/locationBookioService.js');
                             const slotResult = await LocationBookioService.default.findSoonestSlot(
-                                selectedService.serviceId, requestedLocation, -1, skipSlots
+                                selectedService.serviceId, requestedLocation, -1, skipSlots, requestedWorker
                             );
                             
                             response = `${selectedService.name}\n`;
                             response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n`;
                             response += `💰 ${selectedService.price}\n`;
                             response += `⏱️ ${selectedService.duration}\n\n`;
+                            
+                            // Handle worker not found error
+                            if (!slotResult.success && slotResult.availableWorkers) {
+                                response = `${slotResult.message}\n\nMôžete si vybrať z dostupných zamestnancov pre túto službu.`;
+                                return res.json({ message: response });
+                            }
                             
                             // Show real availability with skip awareness
                             if (slotResult.success && slotResult.found && slotResult.date) {

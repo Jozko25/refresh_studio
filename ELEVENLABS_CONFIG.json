@@ -97,6 +97,15 @@
           "required": false
         },
         {
+          "id": "worker",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Preferred staff member name (e.g., \"Janka\", \"Petra\", \"Martina\"). System will search for available workers and match by name. Use when customer requests specific person.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
           "id": "skip_slots",
           "type": "number",
           "value_type": "llm_prompt",
