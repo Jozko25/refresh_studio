@@ -41,11 +41,11 @@ class LLMServiceMatcher {
             const prompt = this.buildMatchingPrompt(userQuery, serviceList, normalizedQuery);
             
             const response = await axios.post(this.baseURL, {
-                model: "gpt-4o-mini",
+                model: "gpt-4o",
                 messages: [
                     {
                         role: "system", 
-                        content: "You are an expert at matching customer service requests to available services in a Slovak beauty clinic. Always respond with just the service number, no explanation."
+                        content: "You are an expert at matching customer service requests to available services in a Slovak beauty clinic. CRITICAL RULE: When customer says 'bokombrady', you MUST find the exact 'bokombrady' service in the list, NOT legs/nohy services. Always respond with just the service number, no explanation."
                     },
                     {
                         role: "user",
@@ -109,14 +109,19 @@ ${serviceList}
 
 Match the customer's request to the most appropriate service. Follow this EXACT priority:
 
-1. **EXACT NAME MATCHES** (highest priority)
-   - Look for identical words in service names
+1. **EXACT SERVICE NAME MATCHES** (highest priority)
+   - If customer mentions a specific service name that exists exactly in the list, choose that service
+   - "bokombrady" → match exact "bokombrady" service (NOT legs or other face services)
+   - "podpazušie" → match exact "podpazušie" service
+   - "brada" → match exact "brada" service (if exists)
+   - CRITICAL: "laserová epilácia bokombrady" should match the "bokombrady" service, NOT "CELÉ NOHY"
 
-2. **BODY PART & GENDER MATCHING FOR LASER HAIR REMOVAL**
-   - "bokombrady", "fúzy", "brada" → match "tvár" services
-   - "podpazušie" → match "podpazušie" services  
-   - Always check for gender: "páni" for men, default for women
-   - "bokombrady páni" should match "celá tvár páni"
+2. **BODY PART MATCHING FOR LASER HAIR REMOVAL** (second priority)
+   - Only use when exact service name doesn't exist
+   - "fúzy" (mustache), "obličej" (face) → match face/tvár services
+   - "nohy" (legs), "lýtka" (calves) → match leg services  
+   - "ruky" (arms), "paže" (arms) → match arm services
+   - Always check gender: "páni" for men, default for women
    
 3. **SLOVAK ACCENT VARIATIONS AND PRONUNCIATION** 
    - Slovak speakers often adapt foreign words with Slovak endings (e.g., "exceláže" likely refers to "EXCELLAGE")
@@ -137,9 +142,17 @@ Match the customer's request to the most appropriate service. Follow this EXACT 
 5. **CATEGORY MATCHES** (lowest priority)
 
 KEY CONSIDERATIONS:
+- NEVER match facial hair terms (bokombrady, fúzy, brada) with leg services (NOHY, LÝTKA)
+- "bokombrady" = sideburns on face → look for "tvár" services, especially "celá tvár páni"
 - Use your language understanding to match Slovak pronunciations and word adaptations to service names
 - Consider age-appropriateness when multiple services are available
 - Prioritize semantic meaning over exact spelling when dealing with foreign words adapted to Slovak
+
+EXAMPLES OF CORRECT MATCHING:
+- "laserová epilácia bokombrady" → should match the exact "bokombrady" service (€15, 15min), NOT "CELÉ NOHY" (legs, €160)
+- "bokombrady" → match exact "bokombrady" service
+- "laser epilácia fúzy" → should match face/tvár services, NOT leg services
+- Always prefer exact service name matches over body part interpretations
 
 Respond with only the service number (1-${serviceList.split('\n').length}).`;
     }
@@ -176,7 +189,7 @@ Return the top ${topN} most relevant service numbers in order of relevance (e.g.
 Consider both original and normalized text when matching Slovak accented characters.`;
 
             const response = await axios.post(this.baseURL, {
-                model: "gpt-4o-mini", 
+                model: "gpt-4o", 
                 messages: [
                     {
                         role: "system",
