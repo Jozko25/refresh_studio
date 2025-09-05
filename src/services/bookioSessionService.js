@@ -10,7 +10,7 @@ class BookioSessionService {
     constructor() {
         this.baseURL = 'https://services.bookio.com';
         this.widgetPath = '/ai-recepcia-zll65ixf/widget';
-        this.facility = 'refresh-laserove-a-esteticke-studio-zu0yxr5l';
+        this.facility = 'ai-recepcia-zll65ixf';
         
         // Create cookie jar for session management
         this.cookieJar = new tough.CookieJar();

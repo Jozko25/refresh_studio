@@ -9,7 +9,7 @@ class BookioTurnstileService {
     constructor() {
         this.baseURL = 'https://services.bookio.com/widget/api';
         this.widgetURL = 'https://services.bookio.com/ai-recepcia-zll65ixf/widget';
-        this.facility = 'refresh-laserove-a-esteticke-studio-zu0yxr5l';
+        this.facility = 'ai-recepcia-zll65ixf';
     }
 
     /**

@@ -15,7 +15,9 @@ import widgetFlowRoutes from './routes/widgetFlow.js';
 import elevenlabsRoutes from './routes/elevenlabs.js';
 import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import bookingRoutes from './routes/booking.js';
+import authRoutes from './routes/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import bookioScheduler from './services/bookioScheduler.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +70,7 @@ app.use('/api/call', callFlowRoutes);
 app.use('/api/widget', widgetFlowRoutes);
 app.use('/api/elevenlabs', elevenlabsUnifiedRoutes);
 app.use('/api/booking', bookingRoutes);
+app.use('/api/auth', authRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -81,7 +84,7 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Bookio Webhook API server running on port ${PORT} - v${Date.now()}`);
   console.log(`📋 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`🔗 Original Facility: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
@@ -92,6 +95,21 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎨 Widget Flow: http://0.0.0.0:${PORT}/api/widget/quick-lookup/[search]`);
   console.log(`🤖 ElevenLabs: http://0.0.0.0:${PORT}/api/elevenlabs/[tool_name]`);
   console.log(`📅 Booking API: http://0.0.0.0:${PORT}/api/booking/create`);
+  console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth/status`);
+  
+  // Auto-start scheduler in production
+  if (process.env.NODE_ENV === 'production' && process.env.BOOKIO_ENV) {
+    try {
+      console.log(`🔐 Starting auth scheduler for ${process.env.BOOKIO_ENV} environment...`);
+      await bookioScheduler.start();
+      console.log(`✅ Auth scheduler started successfully`);
+    } catch (error) {
+      console.error(`⚠️ Failed to start auth scheduler: ${error.message}`);
+      // Don't crash the server, just log the error
+    }
+  } else if (process.env.NODE_ENV === 'development') {
+    console.log(`⚠️ Development mode - scheduler not auto-started. Use /api/auth/init to initialize manually`);
+  }
 });
 
 export default app;

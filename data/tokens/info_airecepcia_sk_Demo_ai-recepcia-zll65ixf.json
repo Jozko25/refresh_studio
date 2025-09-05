@@ -1,0 +1,27 @@
+{
+  "id": "info_airecepcia_sk_Demo_ai-recepcia-zll65ixf",
+  "username": "info@airecepcia.sk",
+  "environment": "Demo",
+  "facility": "ai-recepcia-zll65ixf",
+  "cookie": {
+    "name": "bses-0",
+    "value": "Pa9RgfSIm3B1quRYAv5CDL/IIgh7jQXrU/MGvGHuChLFfX91WKpWm2JhD5soRT0XqlsiKbEyX2S+LuwPHfAfsG+aTtcfklVtiENxD4bQleU+5I/qu+mtwKzdGnwhoRYsMLC1NclYKvYdcPqhs8ohQnJKQIWfYXK3yVBLLjQfkCPnQ8Ynv6nObyFnEFO5xpSEX6ZDUUjrb0eBcgASZtx3LLKblmckGaz5twRSiOe2eF54nLaeO9QrFu3DbOMX2d9zgbX5lo4Hjt8s2X0AfCud/sQA7f2efjc7cyU74fJHiw8SRus2aIuGmSJfueeo0OhIUbEDrt/KMh6GRLIiGFAqRu4ZV3vuA2N+LnfhAFCLyykT0oCOe9MIOP5iyfnwb7/Qt95MunqcsjQSRrHgabdazvHFdjhemAIJQGHtQIR1XeW2Pu0YEO2dS2H+BnVIlm01BOCa43GzG+p5UBuQmHHWHANWMdaVbxo9Q/QfYHPzkeZ8bDJEUvjtKg==",
+    "domain": "services.bookio.com",
+    "path": "/",
+    "expires": 1757117745.155325,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  "expiry": "2025-09-06T00:15:46.016Z",
+  "refreshTime": "2025-09-05T12:15:46.016Z",
+  "createdAt": "2025-09-05T12:15:46.017Z",
+  "lastUsed": "2025-09-05T12:15:46.017Z",
+  "useCount": 1,
+  "isActive": true,
+  "metadata": {
+    "userAgent": "Bookio-Auth-System",
+    "ipAddress": "localhost",
+    "version": "1.0.0"
+  }
+}

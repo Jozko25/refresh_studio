@@ -4,6 +4,7 @@ import BookioTurnstileService from '../services/bookioTurnstileService.js';
 import BookioSessionService from '../services/bookioSessionService.js';
 import BookioBrowserAutomation from '../services/bookioBrowserAutomation.js';
 import EmailService from '../services/emailService.js';
+import bookioApiClient from '../services/bookioApiClient.js';
 
 const router = express.Router();
 
@@ -108,6 +109,110 @@ router.post('/create', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Nastala chyba pri vytváraní rezervácie',
+            error: error.message,
+            email_sent: true
+        });
+    }
+});
+
+/**
+ * POST /api/booking/create-auth
+ * Create booking using authenticated admin API (new system)
+ */
+router.post('/create-auth', async (req, res) => {
+    try {
+        const {
+            serviceId,
+            workerId,
+            date,
+            time,
+            duration,
+            firstName,
+            lastName,
+            email,
+            phone,
+            price,
+            note = ""
+        } = req.body;
+
+        // Validate required fields
+        const requiredFields = ['serviceId', 'date', 'time', 'firstName', 'lastName', 'email'];
+        const missingFields = requiredFields.filter(field => !req.body[field]);
+        
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields',
+                missingFields
+            });
+        }
+
+        console.log('📅 Creating authenticated booking:', {
+            serviceId,
+            workerId,
+            date,
+            time,
+            name: `${firstName} ${lastName}`,
+            email
+        });
+
+        // Prepare booking data for admin API
+        const bookingData = {
+            serviceId: parseInt(serviceId),
+            workerId: workerId || 31576, // Default worker
+            date: date, // Format: DD.MM.YYYY
+            time: time, // Format: HH:mm
+            duration: duration || 40,
+            firstName,
+            lastName,
+            email,
+            phone,
+            price: price || 0,
+            workerName: 'AI Recepcia',
+            workerColor: '#26a69a'
+        };
+
+        // Create booking using authenticated admin API
+        const result = await bookioApiClient.createBooking(bookingData);
+
+        // Send email notification
+        await EmailService.sendBookingNotification(req.body, result, '/api/booking/create-auth');
+
+        if (result.success) {
+            return res.json({
+                success: true,
+                message: 'Rezervácia bola úspešne vytvorená cez admin API',
+                bookingId: result.bookingId,
+                data: result.data,
+                method: 'authenticated_admin_api',
+                email_sent: true
+            });
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: result.error || 'Rezervácia sa nepodarila',
+                errors: result.errors,
+                details: result.details,
+                method: 'authenticated_admin_api',
+                email_sent: true
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Authenticated booking error:', error);
+        
+        // Send email notification for error
+        const errorResult = {
+            success: false,
+            message: 'System error in authenticated booking',
+            error: error.message,
+            stack: error.stack
+        };
+        await EmailService.sendBookingNotification(req.body, errorResult, '/api/booking/create-auth');
+        
+        return res.status(500).json({
+            success: false,
+            message: 'Nastala chyba pri vytváraní rezervácie cez admin API',
             error: error.message,
             email_sent: true
         });

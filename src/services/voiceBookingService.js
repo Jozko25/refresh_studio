@@ -7,7 +7,7 @@ import axios from 'axios';
 class VoiceBookingService {
     constructor() {
         this.baseURL = 'https://services.bookio.com/widget/api';
-        this.facility = 'refresh-laserove-a-esteticke-studio-zu0yxr5l';
+        this.facility = 'ai-recepcia-zll65ixf';
         this.headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',

@@ -10,6 +10,13 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.demo
+.env.staging
+.env.production
+
+# Bookio configuration (if containing sensitive data)
+config/bookio-config.local.js
+config/bookio-config.production.js
 
 # Logs
 logs
