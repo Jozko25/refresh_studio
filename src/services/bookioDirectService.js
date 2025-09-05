@@ -1,5 +1,6 @@
 import axios from 'axios';
 import LLMServiceMatcher from './llmServiceMatcher.js';
+import bookioConfig from '../../config/bookio-config.js';
 
 /**
  * Direct Bookio API Service
@@ -8,7 +9,7 @@ import LLMServiceMatcher from './llmServiceMatcher.js';
 class BookioDirectService {
     constructor() {
         this.baseURL = 'https://services.bookio.com/widget/api';
-        this.facility = 'ai-recepcia-zll65ixf';
+        this.facility = bookioConfig.facility; // Use configured facility instead of hardcoded demo
         this.headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
