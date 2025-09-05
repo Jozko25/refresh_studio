@@ -1340,8 +1340,8 @@ router.post('/', async (req, res) => {
                 // Also check the original requestedTime parameter
                 const finalRequestedTime = requestedTimeFromQuery || requestedTime;
                 
-                // First search without age to check if age-based services exist
-                const initialSearchResult = await BookioDirectService.searchServices(basicSearchTerm);
+                // First search without age to check if age-based services exist (using facility-aware search)
+                const initialSearchResult = await LocationBookioService.searchServices(basicSearchTerm, requestedLocation);
                 
                 // Check if we found services and if they have age variations
                 if (initialSearchResult.success && initialSearchResult.found > 0) {
@@ -1363,9 +1363,9 @@ router.post('/', async (req, res) => {
                     }
                 }
                 
-                // Use age in search if provided
+                // Use age in search if provided (using facility-aware search)
                 const searchTerm = basicSearchTerm + (customerAge ? ` vek ${customerAge}` : '');
-                const searchResult = customerAge ? await BookioDirectService.searchServices(searchTerm) : initialSearchResult;
+                const searchResult = customerAge ? await LocationBookioService.searchServices(searchTerm, requestedLocation) : initialSearchResult;
                 
                 if (searchResult.success && searchResult.found > 0) {
                     const selectedService = searchResult.services[0];
@@ -1426,10 +1426,10 @@ router.post('/', async (req, res) => {
                         const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                         
                         try {
-                            // Get real availability for the service
-                            const BookioDirectService = await import('../services/bookioDirectService.js');
-                            const slotResult = await BookioDirectService.default.findSoonestSlot(
-                                selectedService.serviceId, -1
+                            // Get real availability for the service using facility-aware service
+                            const LocationBookioService = await import('../services/locationBookioService.js');
+                            const slotResult = await LocationBookioService.default.findSoonestSlot(
+                                selectedService.serviceId, requestedLocation, -1
                             );
                             
                             response = `${selectedService.name}\n`;
