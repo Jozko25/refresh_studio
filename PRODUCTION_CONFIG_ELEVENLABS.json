@@ -46,7 +46,7 @@
           "id": "age",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Customer age for skin treatments. ALWAYS ask for age when customer requests: hydrafacial, pleťové ošetrenie, peeling, akné treatment. Different services available for different ages.",
+          "description": "Customer age for skin treatments. Only ask for age when multiple age-specific options are available for the same service (e.g., youth vs adult versions). System automatically detects when age clarification is needed.",
           "dynamic_variable": "",
           "constant_value": "",
           "required": false

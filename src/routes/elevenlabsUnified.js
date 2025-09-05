@@ -1312,7 +1312,8 @@ router.post('/', async (req, res) => {
                 }
                 
                 // Otherwise, search for services and show availability
-                const searchTerm = service + (customerAge ? ` vek ${customerAge}` : '') + (requestedLocation ? ` ${requestedLocation}` : '');
+                // First do a general search without age to see what's available
+                const basicSearchTerm = service + (requestedLocation ? ` ${requestedLocation}` : '');
                 
                 // Extract time request from the original query with improved Slovak patterns
                 const timePattern = /(\d{1,2}):?(\d{2})|(\d{1,2})\s*(?:hodín|hodina|hodiny|dlomu|o\s*(\d{1,2}))/i;
@@ -1339,7 +1340,32 @@ router.post('/', async (req, res) => {
                 // Also check the original requestedTime parameter
                 const finalRequestedTime = requestedTimeFromQuery || requestedTime;
                 
-                const searchResult = await BookioDirectService.searchServices(searchTerm);
+                // First search without age to check if age-based services exist
+                const initialSearchResult = await BookioDirectService.searchServices(basicSearchTerm);
+                
+                // Check if we found services and if they have age variations
+                if (initialSearchResult.success && initialSearchResult.found > 0) {
+                    const ageSpecificKeywords = ['mládež', 'mladých', 'do 18', 'do 20', 'deti', 'akné', 'do 30'];
+                    const hasAgeSpecificServices = initialSearchResult.services.some(s => 
+                        ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
+                    );
+                    const hasGeneralServices = initialSearchResult.services.some(s => 
+                        !ageSpecificKeywords.some(keyword => s.name.toLowerCase().includes(keyword))
+                    );
+                    
+                    // Only ask for age if we have BOTH age-specific AND general services for the same treatment
+                    if (hasAgeSpecificServices && hasGeneralServices && !customerAge && !finalRequestedTime) {
+                        console.log(`🤔 Found both age-specific and general services, asking for age clarification`);
+                        response = `Pre ${service} máme rôzne možnosti podľa veku. Koľko máte rokov?\n\n`;
+                        response += `Toto nám pomôže vybrať najvhodnejšie ošetrenie pre vás.`;
+                        res.set('Content-Type', 'text/plain');
+                        return res.send(response);
+                    }
+                }
+                
+                // Use age in search if provided
+                const searchTerm = basicSearchTerm + (customerAge ? ` vek ${customerAge}` : '');
+                const searchResult = customerAge ? await BookioDirectService.searchServices(searchTerm) : initialSearchResult;
                 
                 if (searchResult.success && searchResult.found > 0) {
                     const selectedService = searchResult.services[0];
