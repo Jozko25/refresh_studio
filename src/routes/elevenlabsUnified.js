@@ -1450,7 +1450,23 @@ router.post('/', async (req, res) => {
                             
                             // Handle worker not found error
                             if (!slotResult.success && slotResult.availableWorkers) {
-                                response = `${slotResult.message}\n\nMôžete si vybrať z dostupných zamestnancov pre túto službu.`;
+                                response += `\n${slotResult.message}`;
+                                
+                                // Still try to find soonest slot with any worker
+                                console.log(`🔄 Worker not found, trying to find soonest slot with any available worker`);
+                                const fallbackSlotResult = await LocationBookioService.default.findSoonestSlot(
+                                    selectedService.serviceId, requestedLocation, -1, skipSlots
+                                );
+                                
+                                if (fallbackSlotResult.success && fallbackSlotResult.found) {
+                                    const termLabel = skipSlots > 0 ? `${skipSlots + 1}. dostupný termín` : 'Najbližší termín';
+                                    response += `\n\n${termLabel} (ktorýkoľvek zamestnanec): ${fallbackSlotResult.date} o ${fallbackSlotResult.time}`;
+                                    if (fallbackSlotResult.alternativeSlots && fallbackSlotResult.alternativeSlots.length > 0) {
+                                        response += `\nĎalšie časy: ${fallbackSlotResult.alternativeSlots.slice(0, 3).join(', ')}`;
+                                    }
+                                    response += `\n\nChcete si rezervovať tento termín?`;
+                                }
+                                
                                 return res.json({ message: response });
                             }
                             

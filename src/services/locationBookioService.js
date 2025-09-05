@@ -217,12 +217,33 @@ class LocationBookioService {
 
         const normalized = this.normalizeText(requestedName);
         console.log(`🔍 Looking for worker: "${requestedName}" (normalized: "${normalized}")`);
+        console.log(`🔍 Available workers: ${workers.map(w => `${w.name} (ID: ${w.workerId})`).join(', ')}`);
 
         // Try exact match first
         let worker = workers.find(w => 
             this.normalizeText(w.name).includes(normalized) ||
-            this.normalizeText(w.fullName).includes(normalized)
+            this.normalizeText(w.fullName || w.name).includes(normalized)
         );
+
+        // Try partial matches if exact fails
+        if (!worker) {
+            worker = workers.find(w => 
+                normalized.includes(this.normalizeText(w.name)) ||
+                this.normalizeText(w.name).includes(normalized.split(' ')[0]) // First word only
+            );
+        }
+
+        // Skip "Nezáleží" (doesn't matter) option unless specifically requested
+        if (worker && worker.name.toLowerCase().includes('nezáleží') && !normalized.includes('nezalezi')) {
+            console.log(`⏭️ Skipping "Nezáleží" option, looking for actual worker`);
+            const otherWorkers = workers.filter(w => !w.name.toLowerCase().includes('nezáleží'));
+            if (otherWorkers.length > 0) {
+                worker = otherWorkers.find(w => 
+                    this.normalizeText(w.name).includes(normalized) ||
+                    normalized.includes(this.normalizeText(w.name))
+                );
+            }
+        }
 
         if (worker) {
             console.log(`✅ Found worker: ${worker.name} (ID: ${worker.workerId})`);
@@ -230,6 +251,7 @@ class LocationBookioService {
         }
 
         console.log(`❌ No worker found matching "${requestedName}"`);
+        console.log(`❌ Tried matching against: ${workers.map(w => this.normalizeText(w.name)).join(', ')}`);
         return null;
     }
 
