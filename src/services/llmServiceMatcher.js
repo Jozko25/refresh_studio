@@ -29,27 +29,30 @@ class LLMServiceMatcher {
             const normalizedQuery = this.normalizeText(userQuery);
             console.log(`🔤 Normalized query: "${userQuery}" → "${normalizedQuery}"`);
             
-            // Prepare service list for LLM with both original and normalized text
+            // Prepare simplified service list for LLM
             const serviceList = availableServices.map((service, index) => {
-                const normalizedTitle = this.normalizeText(service.title);
-                const titleDisplay = normalizedTitle !== service.title.toLowerCase() ? 
-                    `${service.title} (normalized: ${normalizedTitle})` : 
-                    service.title;
-                return `${index + 1}. ${titleDisplay} - ${service.price} (${service.durationString || service.duration}) [Category: ${service.categoryName}]`;
+                return `${index + 1}. ${service.title} - ${service.price}`;
             }).join('\n');
 
-            const prompt = this.buildMatchingPrompt(userQuery, serviceList, normalizedQuery);
+            // Using simplified inline prompt instead of buildMatchingPrompt
+            
+            // Debug logging
+            console.log(`📋 Service list preview (first 5):`);
+            availableServices.slice(0, 5).forEach((service, index) => {
+                console.log(`  ${index + 1}. ${service.title} - ${service.price}`);
+            });
+            console.log(`📋 Service at index 12: ${availableServices[11] ? `${availableServices[11].title} - ${availableServices[11].price}` : 'NOT FOUND'}`);
             
             const response = await axios.post(this.baseURL, {
                 model: "gpt-4o",
                 messages: [
                     {
                         role: "system", 
-                        content: "You are an expert at matching customer service requests to available services in a Slovak beauty clinic. CRITICAL RULE: When customer says 'bokombrady', you MUST find the exact 'bokombrady' service in the list, NOT legs/nohy services. Always respond with just the service number, no explanation."
+                        content: "You are an expert service matcher. Find the best matching service for the customer's request. Respond with ONLY the number (1-188), nothing else."
                     },
                     {
                         role: "user",
-                        content: prompt
+                        content: `Customer wants: "${userQuery}"\n\nServices:\n${serviceList}\n\nWhich service number matches best? Answer with only the number.`
                     }
                 ],
                 max_tokens: 10,
