@@ -44,7 +44,7 @@ class LLMServiceMatcher {
             console.log(`📋 Service at index 12: ${availableServices[11] ? `${availableServices[11].title} - ${availableServices[11].price}` : 'NOT FOUND'}`);
             
             const response = await axios.post(this.baseURL, {
-                model: "gpt-4o",
+                model: "gpt-4o-mini",
                 messages: [
                     {
                         role: "system", 
