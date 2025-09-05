@@ -1,0 +1,128 @@
+{
+  "type": "webhook",
+  "name": "refresh_production",
+  "description": "REFRESH clinic production booking system with smart caching, GPT-4o matching, and real-time availability - Bratislava & Pezinok",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Tool execution parameters for REFRESH clinic booking system with smart caching, GPT-4o service matching, real-time slot availability, and intelligent age detection. Supports Bratislava and Pezinok locations with 339+ services total.",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Tool function. Use: \"refresh_booking\" (main booking tool - searches services, checks availability, handles reservations), \"get_services_overview\" (popular services list), \"get_opening_hours\" (hours/location info). Defaults to refresh_booking for service searches and booking requests.",
+          "dynamic_variable": "",
+          "constant_value": "refresh_booking",
+          "required": false
+        },
+        {
+          "id": "service",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Service name in Slovak. System uses GPT-4o for intelligent matching with 4-hour cached service database. Examples: \"hydrafacial\", \"laserová epilácia\", \"pleťové ošetrenie\", \"bokombrady\", \"tetovanie obočia\". Exact service names are prioritized over semantic matches.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "location",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Location: \"bratislava\" or \"pezinok\". If not specified by customer, ask which location they prefer.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "age",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer age for skin treatments. Smart age detection: system only requests age when multiple age-specific service variants exist (e.g., youth vs adult hydrafacials). Age clarification is automatic and intelligent.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Requested date in DD.MM.YYYY format. Leave empty to find soonest available.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Specific time request in HH:MM format (e.g., \"14:00\"). Only use if customer asks for specific time.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer full name for booking confirmation. Required only when customer agrees to book.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer phone number for booking confirmation. Required only when customer agrees to book.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "email",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer email for booking confirmation. Optional but recommended.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "worker",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Preferred staff member name (e.g., \"Janka\", \"Petra\", \"Martina\"). System will search for available workers and match by name. Use when customer requests specific person.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "skip_slots",
+          "type": "number",
+          "value_type": "llm_prompt",
+          "description": "Incremental slot selection: 0=soonest available, 1=second soonest, 2=third soonest, etc. Real-time slot availability with actual dates and times. Use when customer requests alternative appointment times.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 25,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}

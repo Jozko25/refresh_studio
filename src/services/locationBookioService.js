@@ -150,12 +150,17 @@ class LocationBookioService {
                 } else {
                     console.log(`❌ LLM matching failed: ${llmResult.error}, falling back to text search`);
                 }
+            } else {
+                console.log(`⚠️ LLM matching not available (OpenAI API key missing), using text search for "${searchTerm}"`);
             }
             
             // Fallback to text matching if LLM fails
             const normalizedSearchTerm = this.normalizeText(searchTerm);
             const searchWords = normalizedSearchTerm.split(' ').filter(word => word.length > 2);
             const scoredServices = [];
+            
+            console.log(`🔤 Text search fallback: "${searchTerm}" → normalized: "${normalizedSearchTerm}"`);
+            console.log(`🔍 Search words: ${searchWords.join(', ')}`);
 
             for (const service of services) {
                 let score = 0;
@@ -166,12 +171,15 @@ class LocationBookioService {
                     score += 100;
                 }
 
-                // Word matching with normalized text
+                // Word matching with normalized text - require minimum 4 character match
                 for (const word of searchWords) {
-                    if (normalizedServiceName.includes(word)) score += 50;
+                    if (word.length >= 4 && normalizedServiceName.includes(word)) {
+                        score += 50;
+                    }
                 }
 
                 if (score > 0) {
+                    console.log(`📊 Service "${service.title}" scored ${score} points`);
                     scoredServices.push({
                         serviceId: service.serviceId,
                         name: service.title,
@@ -186,6 +194,11 @@ class LocationBookioService {
             }
 
             scoredServices.sort((a, b) => b.score - a.score);
+
+            console.log(`📋 Text search results: ${scoredServices.length} services found`);
+            if (scoredServices.length > 0) {
+                console.log(`🏆 Top match: "${scoredServices[0].name}" with score ${scoredServices[0].score}`);
+            }
 
             return {
                 success: true,
