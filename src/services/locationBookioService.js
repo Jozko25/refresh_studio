@@ -1,5 +1,6 @@
 import axios from 'axios';
 import BookioDirectService from './bookioDirectService.js';
+import serviceCache from './serviceCache.js';
 
 /**
  * Location-aware Bookio Service
@@ -33,16 +34,42 @@ class LocationBookioService {
     }
 
     /**
-     * Search services for specific location
+     * Get all services for location (with caching)
      */
-    async searchServices(searchTerm, location = 'bratislava') {
+    async getAllServices(location = 'bratislava') {
         const locationInfo = this.getLocationInfo(location);
         if (!locationInfo) {
             return { success: false, message: 'Neznáme miesto' };
         }
 
+        // Check cache first
+        const cached = serviceCache.getServices(location);
+        if (cached.success) {
+            // Start background refresh if stale
+            if (cached.stale) {
+                this.backgroundRefreshServices(location);
+            }
+            return {
+                success: true,
+                services: cached.services,
+                fromCache: true,
+                age: cached.age
+            };
+        }
+
+        // Cache miss - fetch from API
+        return await this.fetchServicesFromAPI(location);
+    }
+
+    /**
+     * Fetch services from API (no cache)
+     */
+    async fetchServicesFromAPI(location) {
+        const locationInfo = this.getLocationInfo(location);
+        
         try {
-            // Get services for this facility using the correct widget API
+            console.log(`🌐 Fetching services from API for ${location}`);
+            
             const response = await axios.post(`${this.baseUrl}/widget/api/services?lang=sk`, {
                 facility: locationInfo.facility,
                 categoryId: null, // Get all services
@@ -55,6 +82,46 @@ class LocationBookioService {
             });
 
             const services = response.data.data || [];
+            
+            // Cache the results
+            serviceCache.setServices(location, services);
+            
+            return {
+                success: true,
+                services,
+                fromCache: false
+            };
+            
+        } catch (error) {
+            console.error(`❌ Error fetching services for ${location}:`, error.message);
+            return { success: false, message: 'Chyba pri načítaní služieb z API' };
+        }
+    }
+
+    /**
+     * Background refresh for stale cache
+     */
+    async backgroundRefreshServices(location) {
+        serviceCache.backgroundRefresh(location, async (loc) => {
+            const result = await this.fetchServicesFromAPI(loc);
+            return result.success ? result.services : null;
+        });
+    }
+
+    /**
+     * Search services for specific location
+     */
+    async searchServices(searchTerm, location = 'bratislava') {
+        // Get all services (cached or fresh)
+        const servicesResult = await this.getAllServices(location);
+        if (!servicesResult.success) {
+            return servicesResult;
+        }
+
+        const services = servicesResult.services;
+        const locationInfo = this.getLocationInfo(location);
+
+        try {
             
             // Search logic with accent-insensitive matching
             const normalizedSearchTerm = this.normalizeText(searchTerm);
