@@ -307,7 +307,7 @@ router.post('/', async (req, res) => {
             body: req.body
         });
 
-        let { tool_name, search_term, service_id, worker_id = -1, date, time, location, preferred_location, user_name, user_email, user_phone, age } = req.body;
+        let { tool_name, search_term, service_id, worker_id = -1, date, time, location, preferred_location, user_name, user_email, user_phone, age, skip_slots = 0 } = req.body;
 
         // Handle ElevenLabs function_call format
         if (req.body.function_call && req.body.function_call.name) {
@@ -1190,6 +1190,7 @@ router.post('/', async (req, res) => {
                 const customerName = req.body.name || req.body.customer_name || user_name;
                 let customerEmail = req.body.email || req.body.customer_email || user_email || '';
                 const customerPhone = req.body.phone || req.body.customer_phone || user_phone;
+                const skipSlots = req.body.skip_slots || skip_slots || 0;
                 const requestedDate = req.body.date || date;
                 const requestedTime = req.body.time || time;
                 const requestedLocation = req.body.location || location || preferred_location || detectLocation(service, null) || detectLocation(req.body.conversation_id, null);
@@ -1429,7 +1430,7 @@ router.post('/', async (req, res) => {
                             // Get real availability for the service using facility-aware service
                             const LocationBookioService = await import('../services/locationBookioService.js');
                             const slotResult = await LocationBookioService.default.findSoonestSlot(
-                                selectedService.serviceId, requestedLocation, -1
+                                selectedService.serviceId, requestedLocation, -1, skipSlots
                             );
                             
                             response = `${selectedService.name}\n`;
@@ -1437,14 +1438,16 @@ router.post('/', async (req, res) => {
                             response += `💰 ${selectedService.price}\n`;
                             response += `⏱️ ${selectedService.duration}\n\n`;
                             
-                            // Show real availability
+                            // Show real availability with skip awareness
                             if (slotResult.success && slotResult.found && slotResult.date) {
+                                const termLabel = skipSlots > 0 ? `${skipSlots + 1}. dostupný termín` : 'Najbližší termín';
+                                
                                 if (slotResult.daysFromNow === 0) {
-                                    response += `Najbližší termín: dnes o ${slotResult.time}`;
+                                    response += `${termLabel}: dnes o ${slotResult.time}`;
                                 } else if (slotResult.daysFromNow === 1) {
-                                    response += `Najbližší termín: zajtra (${slotResult.date}) o ${slotResult.time}`;
+                                    response += `${termLabel}: zajtra (${slotResult.date}) o ${slotResult.time}`;
                                 } else {
-                                    response += `Najbližší termín: ${slotResult.date} o ${slotResult.time}`;
+                                    response += `${termLabel}: ${slotResult.date} o ${slotResult.time}`;
                                 }
                                 
                                 // Show more alternative times for better user experience

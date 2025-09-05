@@ -95,6 +95,15 @@
           "dynamic_variable": "",
           "constant_value": "",
           "required": false
+        },
+        {
+          "id": "skip_slots",
+          "type": "number",
+          "value_type": "llm_prompt",
+          "description": "Number of slots to skip to get next available times. Use 0 for soonest, 1 for second soonest, 2 for third, etc. Use when customer asks for 'next' or 'different' time options.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
         }
       ],
       "required": false,

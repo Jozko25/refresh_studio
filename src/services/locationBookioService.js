@@ -106,7 +106,7 @@ class LocationBookioService {
     /**
      * Find soonest slot for specific location
      */
-    async findSoonestSlot(serviceId, location = 'bratislava', workerId = -1) {
+    async findSoonestSlot(serviceId, location = 'bratislava', workerId = -1, skipSlots = 0) {
         const locationInfo = this.getLocationInfo(location);
         if (!locationInfo) {
             return { success: false, message: 'Neznáme miesto' };
@@ -169,26 +169,28 @@ class LocationBookioService {
                     console.log(`📅 Available times for ${formattedDateTime}: ${times.map(t => t.name).slice(0, 5).join(', ')}${times.length > 5 ? '...' : ''}`);
                 }
                 
-                if (times.length > 0) {
-                    // Found available slots for this day
-                    const earliestTime = times[0];
+                if (times.length > skipSlots) {
+                    // Found available slots for this day, skip the required number
+                    const selectedTime = times[skipSlots];
                     const slotDate = checkDate;
                     const daysFromNow = dayOffset;
                     
-                    // Get alternative times from the same day
-                    const alternativeSlots = times.slice(1, 3).map(time => time.name);
+                    // Get alternative times after the selected one
+                    const alternativeSlots = times.slice(skipSlots + 1, skipSlots + 3).map(time => time.name);
                     
-                    console.log(`✅ Found earliest slot in ${location}: ${this.formatDate(slotDate)} at ${earliestTime.name}`);
+                    const slotLabel = skipSlots > 0 ? `${skipSlots + 1}. dostupný termín` : 'Najbližší termín';
+                    console.log(`✅ Found ${slotLabel} in ${location}: ${this.formatDate(slotDate)} at ${selectedTime.name}`);
                     
                     return {
                         success: true,
                         found: true,
                         date: this.formatDate(slotDate),
-                        time: earliestTime.name,
+                        time: selectedTime.name,
                         daysFromNow,
                         totalSlots: times.length,
                         alternativeSlots,
-                        location: locationInfo.name
+                        location: locationInfo.name,
+                        skipSlots: skipSlots
                     };
                 }
             }
