@@ -734,13 +734,20 @@ router.post('/', async (req, res) => {
                         const searchResult = await LocationBookioService.searchServices(service_name || search_term, bookingLocation);
                         if (searchResult.success && searchResult.services.length > 0) {
                             const service = searchResult.services[0];
-                            // Get available slots for next few days
-                            const lookupResult = await WidgetFlowService.quickServiceLookup(service.name, "06.09.2025");
+                            // Get available slots for next few days - use current date + 1
+                            const tomorrow = new Date();
+                            tomorrow.setDate(tomorrow.getDate() + 1);
+                            const tomorrowStr = tomorrow.toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit', 
+                                year: 'numeric'
+                            });
+                            const lookupResult = await WidgetFlowService.quickServiceLookup(service.name, tomorrowStr);
                             
                             if (lookupResult.success && lookupResult.availability.totalSlots > 0) {
                                 response = `Našiel som službu: ${service.name}\n`;
                                 response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
-                                response += `📅 Dostupné termíny na 06.09.2025:\n`;
+                                response += `📅 Dostupné termíny na ${tomorrowStr}:\n`;
                                 
                                 if (lookupResult.availability.morningTimes.length > 0) {
                                     response += `🌅 Dopoludnia: ${lookupResult.availability.morningTimes.slice(0, 3).join(', ')}\n`;
