@@ -1319,21 +1319,30 @@ router.post('/', async (req, res) => {
                         const timeTo = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
                         
                         console.log('🎭 Preparing web automation booking...');
+                        console.log('📋 Booking details:', { customerName, customerEmail, customerPhone, bookingDate, bookingTime, selectedService: selectedService.name });
                         
                         // Use Playwright to automate the web interface instead of API calls
                         console.log('🎭 Starting Playwright booking automation...');
+                        console.log('⏱️ Step 1: Importing Playwright...');
                         const { chromium } = await import('playwright');
+                        console.log('✅ Playwright imported successfully');
                         
+                        console.log('⏱️ Step 2: Launching browser...');
                         const browser = await chromium.launch({ 
                             headless: true,
-                            args: ['--no-sandbox', '--disable-setuid-sandbox']
+                            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
                         });
+                        console.log('✅ Browser launched successfully');
                         
+                        console.log('⏱️ Step 3: Creating browser context...');
                         const context = await browser.newContext({
                             userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36'
                         });
+                        console.log('✅ Browser context created');
                         
+                        console.log('⏱️ Step 4: Creating new page...');
                         const page = await context.newPage();
+                        console.log('✅ New page created');
                         
                         // Set the authentication cookie
                         console.log('🔑 Cookie type:', typeof cookieString);
@@ -1356,60 +1365,128 @@ router.post('/', async (req, res) => {
                             secure: true
                         });
                         
-                        console.log('🍪 Cookie set successfully');
+                        console.log('✅ Cookie set successfully');
                         
-                        console.log('🌐 Navigating to Bookio admin schedule...');
-                        await page.goto(`https://services.bookio.com/client-admin/${facilitySlug}/schedule`);
+                        console.log('⏱️ Step 6: Navigating to Bookio admin schedule...');
+                        const targetUrl = `https://services.bookio.com/client-admin/${facilitySlug}/schedule`;
+                        console.log('🌐 Target URL:', targetUrl);
                         
-                        // Wait for page to load
-                        await page.waitForTimeout(2000);
+                        const response = await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                        console.log('✅ Navigation response status:', response.status());
                         
-                        console.log('📅 Creating new booking via web interface...');
+                        // Wait for page to load and check if we're authenticated
+                        console.log('⏱️ Step 7: Waiting for page to load...');
+                        await page.waitForTimeout(3000);
+                        
+                        const currentUrl = page.url();
+                        console.log('📍 Current URL after navigation:', currentUrl);
+                        
+                        // Check if redirected to login (indicates auth failure)
+                        if (currentUrl.includes('/auth/login')) {
+                            console.log('❌ Redirected to login - authentication failed');
+                            await browser.close();
+                            throw new Error('Authentication failed - redirected to login page');
+                        }
+                        
+                        const pageTitle = await page.title();
+                        console.log('📄 Page title:', pageTitle);
+                        
+                        console.log('⏱️ Step 8: Creating new booking via web interface...');
                         
                         // Look for add/new booking button and click it
                         try {
+                            console.log('⏱️ Step 9: Looking for add booking button...');
+                            
+                            // First, let's see what's on the page
+                            const bodyText = await page.textContent('body');
+                            console.log('📄 Page contains text (first 200 chars):', bodyText?.substring(0, 200));
+                            
                             // Try multiple common selectors for add booking button
                             const addButtonSelectors = [
                                 'text="Add"',
                                 'text="New"', 
                                 'text="Pridať"',
+                                'text="Nový"',
                                 '.btn-primary',
                                 '.add-event',
                                 'button:has-text("Add")',
                                 'button:has-text("New")',
-                                'button:has-text("Pridať")'
+                                'button:has-text("Pridať")',
+                                'button:has-text("Nový")',
+                                '[data-testid*="add"]',
+                                '.add-btn',
+                                '.new-btn'
                             ];
+                            
+                            console.log('🔍 Searching for add button with', addButtonSelectors.length, 'selectors...');
                             
                             let clicked = false;
                             for (const selector of addButtonSelectors) {
                                 try {
+                                    console.log('🎯 Trying selector:', selector);
                                     await page.click(selector, { timeout: 2000 });
                                     clicked = true;
-                                    console.log(`✅ Clicked add button with selector: ${selector}`);
+                                    console.log(`✅ Successfully clicked add button with selector: ${selector}`);
                                     break;
                                 } catch (e) {
+                                    console.log(`❌ Selector "${selector}" failed:`, e.message);
                                     continue;
                                 }
                             }
                             
                             if (!clicked) {
+                                console.log('⚠️ No add button found, trying fallback methods...');
+                                
+                                // Take screenshot to see what's on page
+                                try {
+                                    await page.screenshot({ path: '/tmp/no-button-found.png' });
+                                    console.log('📸 Screenshot saved: no-button-found.png');
+                                } catch (e) {
+                                    console.log('📸 Screenshot failed:', e.message);
+                                }
+                                
                                 // Try clicking coordinates for typical "add" button location
                                 await page.click('body', { position: { x: 100, y: 100 } });
-                                console.log('⚠️ Used fallback click at coordinates');
+                                console.log('⚠️ Used fallback click at coordinates (100, 100)');
                             }
                             
-                            await page.waitForTimeout(2000);
+                            console.log('⏱️ Step 10: Waiting for form to appear...');
+                            await page.waitForTimeout(3000);
                             
-                            // Fill booking form with multiple selector attempts
-                            await page.fill('input[name="name"], input[placeholder*="meno"], input[placeholder*="name"]', customerName);
-                            await page.fill('input[name="email"], input[type="email"]', customerEmail);
-                            await page.fill('input[name="phone"], input[type="tel"]', customerPhone);
+                            console.log('⏱️ Step 11: Filling booking form...');
                             
-                            console.log('✅ Form fields filled');
+                            // Fill booking form with multiple selector attempts and logging
+                            try {
+                                await page.fill('input[name="name"], input[placeholder*="meno"], input[placeholder*="name"]', customerName);
+                                console.log('✅ Name field filled:', customerName);
+                            } catch (e) {
+                                console.log('❌ Name field failed:', e.message);
+                            }
                             
+                            try {
+                                await page.fill('input[name="email"], input[type="email"]', customerEmail);
+                                console.log('✅ Email field filled:', customerEmail);
+                            } catch (e) {
+                                console.log('❌ Email field failed:', e.message);
+                            }
+                            
+                            try {
+                                await page.fill('input[name="phone"], input[type="tel"]', customerPhone);
+                                console.log('✅ Phone field filled:', customerPhone);
+                            } catch (e) {
+                                console.log('❌ Phone field failed:', e.message);
+                            }
+                            
+                            console.log('✅ Form fields filled (attempted)');
+                            
+                            console.log('⏱️ Step 12: Taking screenshot for debugging...');
                             // Take screenshot for debugging
-                            await page.screenshot({ path: '/tmp/booking-form.png' });
-                            console.log('📸 Screenshot saved for debugging');
+                            try {
+                                await page.screenshot({ path: '/tmp/booking-form-filled.png' });
+                                console.log('📸 Screenshot saved: booking-form-filled.png');
+                            } catch (e) {
+                                console.log('📸 Screenshot failed:', e.message);
+                            }
                             
                             // Submit form - try multiple methods
                             const submitSelectors = [
