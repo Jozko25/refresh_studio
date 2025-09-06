@@ -480,14 +480,33 @@ router.post('/', async (req, res) => {
                 
                 console.log(`🕐 Time detection: pattern=${timePattern}, match=${JSON.stringify(timeMatch)}, requestedTime=${requestedTime}`);
                 
-                // Use proper search functionality that's already implemented
-                const searchWords = search_term.toLowerCase().split(' ').filter(word => 
+                // Use proper search functionality - PRESERVE IMPORTANT SERVICE VARIANTS
+                let searchWords = search_term.toLowerCase().split(' ').filter(word => 
                     word.length > 2 && 
                     !['bratislava', 'pezinok'].includes(word) &&
                     !timePattern.test(word) &&
                     word !== 'rokov' &&
-                    word !== 'mám'
+                    word !== 'mám' &&
+                    word !== 'termín' &&
+                    word !== 'voľný' &&
+                    word !== 'najbližší' &&
+                    word !== 'najrýchlejší'
                 );
+                
+                // 🔥 CRITICAL FIX: Preserve service variants like 'platinum', 'j-lo'
+                const importantVariants = ['platinum', 'platínum', 'j-lo', 'jlo', 'jennifer', 'lopez', 'základ', 'akné', 'krk'];
+                const hasVariant = importantVariants.some(variant => 
+                    search_term.toLowerCase().includes(variant)
+                );
+                
+                if (hasVariant) {
+                    // Keep the full service name with variant
+                    const cleanedTerm = search_term.toLowerCase()
+                        .replace(/bratislava|pezinok|termín|voľný|najbližší|najrýchlejší|aký|aké/gi, '')
+                        .trim();
+                    searchWords = cleanedTerm.split(' ').filter(word => word.length > 1);
+                    console.log(`🎯 VARIANT DETECTED: Using specific search: "${searchWords.join(' ')}"`);
+                }
                 
                 console.log(`🔍 ElevenLabs searching for: "${searchWords.join(' ')}"${requestedTime ? ` (requested time: ${requestedTime})` : ''}`);
                 
@@ -655,7 +674,8 @@ router.post('/', async (req, res) => {
                                     // Known HydraFacial services and their workers
                                     const hydrafacialServices = [
                                         { id: 125877, name: 'HYDRAFACIAL J.LO', workers: [18204], price: '145.00 €', duration: '1h' },  // Janka only
-                                        { id: 125882, name: 'HYDRAFACIAL ZÁKLAD', workers: [18204, 30224], price: '95.00 €', duration: '45min' }  // Janka + Veronika
+                                        { id: 125882, name: 'HYDRAFACIAL ZÁKLAD', workers: [18204, 30224], price: '95.00 €', duration: '45min' },  // Janka + Veronika
+                                        { id: 132731, name: 'HYDRAFACIAL PLATINUM', workers: [18204, 30224], price: '125.00 €', duration: '1h' }  // Both workers confirmed
                                     ];
                                     
                                     for (const hydraService of hydrafacialServices) {
