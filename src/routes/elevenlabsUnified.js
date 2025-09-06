@@ -645,51 +645,77 @@ router.post('/', async (req, res) => {
                             let bestSlot = primarySlot;
                             console.log(`📅 Primary service slot: ${primarySlot.found ? `${primarySlot.date} o ${primarySlot.time}` : 'none'}`);
                             
-                            // Step 2: Check similar services (e.g., other HydraFacial variants)
+                            // Step 2: DIRECT API CHECK for HydraFacial services with all workers
                             try {
                                 const serviceType = service.name.toLowerCase();
-                                let searchVariants = [];
                                 
                                 if (serviceType.includes('hydrafacial')) {
-                                    searchVariants = ['hydrafacial základ', 'hydrafacial akné', 'hydrafacial krk', 'hydrafacial platinum'];
-                                } else if (serviceType.includes('mezoterapia')) {
-                                    searchVariants = ['mezoterapia', 'mezoterapia vlasy'];
-                                } else if (serviceType.includes('peeling')) {
-                                    searchVariants = ['peeling', 'chemický peeling'];
-                                }
-                                
-                                for (const variant of searchVariants) {
-                                    if (variant === serviceType) continue; // Skip the original service
+                                    console.log(`🔍 DIRECT API CHECK: Checking HydraFacial variants with all workers`);
                                     
-                                    console.log(`🔍 Checking variant: ${variant}`);
+                                    // Known HydraFacial services and their workers
+                                    const hydrafacialServices = [
+                                        { id: 125877, name: 'HYDRAFACIAL J.LO', workers: [18204], price: '145.00 €', duration: '1h' },  // Janka only
+                                        { id: 125882, name: 'HYDRAFACIAL ZÁKLAD', workers: [18204, 30224], price: '95.00 €', duration: '45min' }  // Janka + Veronika
+                                    ];
                                     
-                                    // Search for this service variant
-                                    const variantServices = await BookioDirectService.searchServices(variant, locationMatch);
-                                    
-                                    if (variantServices.success && variantServices.services && variantServices.services.length > 0) {
-                                        for (const variantService of variantServices.services) {
-                                            console.log(`📋 Found variant service: ${variantService.name} (ID: ${variantService.serviceId})`);
+                                    for (const hydraService of hydrafacialServices) {
+                                        for (const workerId of hydraService.workers) {
+                                            const workerName = workerId === 18204 ? 'Janka' : workerId === 30224 ? 'Veronika' : `Worker ${workerId}`;
+                                            console.log(`🔍 Checking ${hydraService.name} with ${workerName} (${workerId})`);
                                             
-                                            const variantSlot = await LocationBookioService.findSoonestSlot(
-                                                variantService.serviceId,
-                                                locationMatch,
-                                                -1  // Check all workers
-                                            );
-                                            
-                                            if (variantSlot.success && variantSlot.found) {
-                                                console.log(`📅 Variant slot found: ${variantSlot.date} o ${variantSlot.time}`);
+                                            // Check next 60 days
+                                            for (let dayOffset = 0; dayOffset < 60; dayOffset++) {
+                                                const checkDate = new Date();
+                                                checkDate.setDate(checkDate.getDate() + dayOffset);
+                                                const dateStr = `${checkDate.getDate().toString().padStart(2, '0')}.${(checkDate.getMonth() + 1).toString().padStart(2, '0')}.${checkDate.getFullYear()} 00:00`;
                                                 
-                                                // Compare with current best slot
-                                                if (!bestSlot.found || isEarlierSlot(variantSlot, bestSlot)) {
-                                                    bestSlot = {
-                                                        ...variantSlot,
-                                                        originalService: service.name,
-                                                        actualService: variantService.name,
-                                                        serviceId: variantService.serviceId,
-                                                        price: variantService.price || service.price,
-                                                        duration: variantService.duration || service.duration
-                                                    };
-                                                    console.log(`✅ NEW BEST SLOT: ${bestSlot.date} o ${bestSlot.time} from ${variantService.name}`);
+                                                try {
+                                                    const apiResponse = await axios.post('https://services.bookio.com/widget/api/allowedTimes?lang=sk', {
+                                                        serviceId: hydraService.id,
+                                                        workerId: workerId,
+                                                        date: dateStr,
+                                                        lang: 'sk',
+                                                        count: 1,
+                                                        participantsCount: 0,
+                                                        addons: []
+                                                    }, {
+                                                        timeout: 10000,
+                                                        headers: { 'Content-Type': 'application/json' }
+                                                    });
+                                                    
+                                                    const times = apiResponse.data?.data?.times?.all || [];
+                                                    if (times.length > 0) {
+                                                        const firstTime = times[0].name;
+                                                        const slotDate = `${checkDate.getDate().toString().padStart(2, '0')}.${(checkDate.getMonth() + 1).toString().padStart(2, '0')}.${checkDate.getFullYear()}`;
+                                                        
+                                                        console.log(`📅 FOUND SLOT: ${slotDate} o ${firstTime} with ${workerName} for ${hydraService.name}`);
+                                                        
+                                                        const candidateSlot = {
+                                                            success: true,
+                                                            found: true,
+                                                            date: slotDate,
+                                                            time: firstTime,
+                                                            workerId: workerId,
+                                                            workerName: workerName,
+                                                            actualService: hydraService.name,
+                                                            price: hydraService.price,
+                                                            duration: hydraService.duration,
+                                                            serviceId: hydraService.id,
+                                                            alternativeSlots: times.slice(1, 5).map(t => t.name),
+                                                            daysFromNow: dayOffset
+                                                        };
+                                                        
+                                                        // Compare with current best
+                                                        if (!bestSlot.found || isEarlierSlot(candidateSlot, bestSlot)) {
+                                                            bestSlot = candidateSlot;
+                                                            console.log(`✅ NEW BEST: ${slotDate} o ${firstTime} with ${workerName} for ${hydraService.name}`);
+                                                        }
+                                                        
+                                                        // Found the earliest possible, break out of day loop for this worker
+                                                        break;
+                                                    }
+                                                } catch (apiError) {
+                                                    // Ignore API errors for individual days
                                                 }
                                             }
                                         }
@@ -697,7 +723,7 @@ router.post('/', async (req, res) => {
                                 }
                                 
                             } catch (variantError) {
-                                console.error(`❌ Error checking service variants:`, variantError);
+                                console.error(`❌ Error in direct API check:`, variantError);
                             }
                             
                             slotResult = bestSlot;
