@@ -769,8 +769,42 @@ class BookioDirectService {
                         message: 'Služba momentálne nie je dostupná'
                     };
                 }
-                // Use first available worker (excluding "Nezáleží" if others exist)
+                
+                // Check all workers to find the truly soonest slot
                 const realWorkers = workers.filter(w => w.workerId !== -1);
+                if (realWorkers.length > 0) {
+                    console.log(`🔍 Checking all workers for soonest slot: ${realWorkers.map(w => w.workerName).join(', ')}`);
+                    
+                    let earliestSlot = null;
+                    
+                    // Check each worker to find the earliest slot
+                    for (const worker of realWorkers) {
+                        try {
+                            const workerSlot = await this.findWorkerSoonestSlot(serviceId, worker.workerId);
+                            
+                            if (workerSlot.success && workerSlot.found) {
+                                // Compare dates and times to find earliest
+                                if (!earliestSlot || this.isEarlierSlot(workerSlot, earliestSlot)) {
+                                    earliestSlot = {
+                                        ...workerSlot,
+                                        workerName: worker.workerName,
+                                        workerId: worker.workerId
+                                    };
+                                }
+                            }
+                        } catch (error) {
+                            console.log(`❌ Error checking worker ${worker.workerName}:`, error.message);
+                            continue;
+                        }
+                    }
+                    
+                    if (earliestSlot) {
+                        console.log(`✅ Found earliest slot: ${earliestSlot.date} o ${earliestSlot.time} with ${earliestSlot.workerName}`);
+                        return earliestSlot;
+                    }
+                }
+                
+                // Fallback to using first available worker
                 workerId = realWorkers.length > 0 ? realWorkers[0].workerId : workers[0].workerId;
             }
 
@@ -841,6 +875,104 @@ class BookioDirectService {
                 error: error.message
             };
         }
+    }
+
+    /**
+     * Find soonest slot for a specific worker
+     */
+    async findWorkerSoonestSlot(serviceId, workerId) {
+        try {
+            // Get allowed days (this gets current month by default)
+            const allowedDays = await this.getAllowedDays(serviceId, workerId);
+            
+            if (!allowedDays.allowedDays || allowedDays.allowedDays.length === 0) {
+                return {
+                    success: false,
+                    found: false,
+                    message: 'No allowed days found'
+                };
+            }
+
+            // Check each allowed day
+            for (const day of allowedDays.allowedDays) {
+                const dateStr = `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year} 00:00`;
+                
+                try {
+                    const times = await this.getAllowedTimes(serviceId, workerId, dateStr);
+                    
+                    if (times.times && times.times.all && times.times.all.length > 0) {
+                        const firstTime = times.times.all[0];
+                        
+                        // Calculate days from now
+                        const appointmentDate = new Date(allowedDays.year, allowedDays.month - 1, day);
+                        const today = new Date();
+                        const daysFromNow = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        return {
+                            success: true,
+                            found: true,
+                            date: `${day}.${allowedDays.month.toString().padStart(2, '0')}.${allowedDays.year}`,
+                            time: firstTime.name,
+                            workerId: workerId,
+                            totalSlots: times.times.all.length,
+                            allTimes: times.times.all.slice(0, 5).map(t => t.name),
+                            daysFromNow: daysFromNow,
+                            alternativeSlots: times.times.all.slice(1, 5).map(t => t.name),
+                            message: `Najrýchlejší dostupný termín je ${day}.${allowedDays.month}.${allowedDays.year} o ${firstTime.name}`
+                        };
+                    }
+                } catch (error) {
+                    continue;
+                }
+            }
+
+            return {
+                success: false,
+                found: false,
+                message: 'No available slots found'
+            };
+
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Compare two slots to determine which is earlier
+     */
+    isEarlierSlot(slot1, slot2) {
+        // Parse dates
+        const date1Parts = slot1.date.split('.');
+        const date2Parts = slot2.date.split('.');
+        
+        const date1 = new Date(
+            parseInt(date1Parts[2]), // year
+            parseInt(date1Parts[1]) - 1, // month (0-based)
+            parseInt(date1Parts[0]) // day
+        );
+        
+        const date2 = new Date(
+            parseInt(date2Parts[2]), // year
+            parseInt(date2Parts[1]) - 1, // month (0-based)
+            parseInt(date2Parts[0]) // day
+        );
+        
+        // Compare dates first
+        if (date1.getTime() !== date2.getTime()) {
+            return date1.getTime() < date2.getTime();
+        }
+        
+        // Same date, compare times
+        const time1Parts = slot1.time.split(':');
+        const time2Parts = slot2.time.split(':');
+        
+        const time1Minutes = parseInt(time1Parts[0]) * 60 + parseInt(time1Parts[1]);
+        const time2Minutes = parseInt(time2Parts[0]) * 60 + parseInt(time2Parts[1]);
+        
+        return time1Minutes < time2Minutes;
     }
 
 }

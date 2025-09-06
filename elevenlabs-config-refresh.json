@@ -1,0 +1,155 @@
+{
+  "type": "webhook",
+  "name": "refresh_booking_system",
+  "description": "Systém rezervácií pre REFRESH laserové a estetické štúdio - vyhľadávanie služieb, kontrola dostupnosti a rezervácie",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Extract the tool name and relevant parameters from the user's request. CRITICAL: For 'najbližší/najrýchlejší termín' ALWAYS use 'location_booking' with search_term = 'service + location' (e.g. 'hydrafacial bratislava'). This tool automatically finds the soonest available slot. NEVER use specific dates for 'nearest appointment' requests.",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Nástroj ktorý chcete použiť - KRITICKÉ: Pre 'najbližší termín' VŽDY použite 'location_booking' s 'služba + lokácia', NIE konkrétny dátum! Dostupné: location_booking (pre najbližší termín), search_service, find_soonest_slot, search_services, confirm_booking, get_services_overview, get_opening_hours",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "search_term",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Hľadaný výraz - názov služby, lokácia, alebo dátum (v závislosti od nástroja)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "service_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Názov služby pre rezerváciu (pre request_booking)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "service_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "ID služby (pre check_specific_slot, check_date)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "location",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Pobočka - 'bratislava' alebo 'pezinok'",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "preferred_location",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Preferovaná pobočka - 'bratislava' alebo 'pezinok'",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Dátum v formáte DD.MM.YYYY",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Čas v formáte HH:MM",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "customer_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Meno a priezvisko klienta (pre request_booking)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "user_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Alternatívne meno používateľa",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Telefónne číslo klienta (pre request_booking)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "user_phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Alternatívne telefónne číslo",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "note",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Poznámka k rezervácii",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "worker_id",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "ID pracovníka (použite -1 pre ľubovoľného)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 30,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
