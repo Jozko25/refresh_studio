@@ -1356,7 +1356,7 @@ router.post('/', async (req, res) => {
                             cookieValue = String(cookieString).replace('bses-0=', '');
                         }
                         
-                        await page.addCookie({
+                        await context.addCookie({
                             name: 'bses-0',
                             value: cookieValue,
                             domain: '.bookio.com',
