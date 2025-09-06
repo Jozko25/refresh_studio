@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer';
  */
 class EmailService {
     constructor() {
-        this.notificationEmail = 'janko.tank.poi@gmail.com';
+        this.notificationEmail = 'info@airecepcia.sk';
         // Initialize email service asynchronously to not block startup
         this.initEmailService().catch(error => {
             console.error('❌ Email service initialization failed:', error);
@@ -156,6 +156,103 @@ class EmailService {
             
         } catch (error) {
             console.error('❌ Failed to send booking notification:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Send booking request email from ElevenLabs conversation
+     * @param {Object} bookingRequest - Booking request data from ElevenLabs
+     * @param {string} bookingRequest.serviceName - Name of the service requested
+     * @param {string} bookingRequest.customerName - Customer's full name
+     * @param {string} bookingRequest.date - Requested date
+     * @param {string} bookingRequest.time - Requested time
+     * @param {string} bookingRequest.phone - Customer's phone number
+     * @param {string} bookingRequest.note - Any additional notes
+     * @param {string} bookingRequest.location - 'bratislava' or 'pezinok'
+     */
+    async sendBookingRequestEmail(bookingRequest) {
+        if (!this.emailTransporter) {
+            console.log('⚠️ Email service not available, skipping booking request notification');
+            return false;
+        }
+
+        try {
+            // Location info with correct widget URLs
+            const locationInfo = {
+                bratislava: {
+                    name: 'Bratislava',
+                    address: 'Lazaretská 13, Bratislava',
+                    widget_url: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                },
+                pezinok: {
+                    name: 'Pezinok',
+                    address: 'Pezinok',
+                    widget_url: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk'
+                }
+            };
+            
+            const currentLocation = locationInfo[bookingRequest.location?.toLowerCase()] || locationInfo.pezinok;
+            
+            const subject = `🏥 NOVÁ REZERVÁCIA - ${bookingRequest.serviceName} - ${currentLocation.name}`;
+
+            const mailOptions = {
+                from: process.env.EMAIL_USER || 'booking-notifications@refresh-studio.com',
+                to: this.notificationEmail,
+                subject: subject,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #2196f3; text-align: center;">🏥 Nová žiadosť o rezerváciu</h2>
+                        
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+                            <h3 style="margin-top: 0;">📍 Pobočka: ${currentLocation.name}</h3>
+                            <p><strong>Adresa:</strong> ${currentLocation.address}</p>
+                            <p><strong>Widget na rezerváciu:</strong></p>
+                            <a href="${currentLocation.widget_url}" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">
+                                Otvoriť rezervačný systém
+                            </a>
+                        </div>
+
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ff9800;">
+                            <h3 style="margin-top: 0;">💼 Detaily služby</h3>
+                            <p><strong>Služba:</strong> ${bookingRequest.serviceName}</p>
+                            <p><strong>Požadovaný dátum:</strong> ${bookingRequest.date || 'Nešpecifikovaný'}</p>
+                            <p><strong>Požadovaný čas:</strong> ${bookingRequest.time || 'Nešpecifikovaný'}</p>
+                        </div>
+
+                        <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50;">
+                            <h3 style="margin-top: 0;">👤 Údaje zákazníka</h3>
+                            <p><strong>Meno:</strong> ${bookingRequest.customerName}</p>
+                            <p><strong>Telefón:</strong> ${bookingRequest.phone || 'Nešpecifikovaný'}</p>
+                            ${bookingRequest.note ? `<p><strong>Poznámka:</strong> ${bookingRequest.note}</p>` : ''}
+                        </div>
+                        
+                        <div style="background: #ffebee; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f44336;">
+                            <h3 style="margin-top: 0;">⚠️ Akcia potrebná</h3>
+                            <p>Táto rezervácia bola vytvorená cez AI asistenta. Je potrebné ju manuálne spracovať v rezervačnom systéme.</p>
+                        </div>
+                        
+                        <hr style="margin: 30px 0;">
+                        <p style="text-align: center; color: #666; font-size: 12px;">
+                            📅 ${new Date().toLocaleString('sk-SK')}<br>
+                            🤖 Vygenerované AI asistentom REFRESH Clinic
+                        </p>
+                    </div>
+                `
+            };
+
+            const info = await this.emailTransporter.sendMail(mailOptions);
+            
+            console.log('📧 Booking request email sent:', info.messageId);
+            
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('📧 Preview URL:', nodemailer.getTestMessageUrl(info));
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to send booking request email:', error);
             return false;
         }
     }
