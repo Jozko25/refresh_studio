@@ -1265,28 +1265,105 @@ router.post('/', async (req, res) => {
                     const bookingDate = requestedDate || new Date().toISOString().split('T')[0].split('-').reverse().join('.');
                     const bookingTime = requestedTime || '10:00';
                     
-                    // Log booking for manual processing
-                    console.log('🚨 NEW BOOKING REQUEST FROM REFRESH_BOOKING:');
+                    // Make actual booking to Bookio
+                    console.log('🚨 CREATING REAL BOOKING IN BOOKIO:');
                     console.log('👤 Customer:', customerName);
                     console.log('📧 Email:', customerEmail || 'not provided');
                     console.log('📱 Phone:', customerPhone);
-                    console.log('🏥 Service:', selectedService.name);
+                    console.log('🏥 Service:', selectedService.name, 'ID:', selectedService.serviceId);
                     console.log('📅 Date:', bookingDate);
                     console.log('🕐 Time:', bookingTime);
                     console.log('📍 Location:', requestedLocation);
-                    console.log('🚨 === END BOOKING REQUEST ===');
                     
-                    // Get location info for Zapier
-                    const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
-                    
-                    // Zapier webhook disabled per user request
-                    console.log('📨 Zapier webhook disabled - no external notifications sent');
-                    
-                    response = `Perfektné! Vaša rezervácia bola zaznamenaná.\n`;
-                    response += `📋 ${selectedService.name}\n`;
-                    response += `📅 ${bookingDate} o ${bookingTime}\n`;
-                    response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n\n`;
-                    response += `Náš tím vás bude kontaktovať pre potvrdenie termínu.`;
+                    try {
+                        // Get the authenticated cookie for the facility
+                        const DualFacilityAuthService = (await import('../services/DualFacilityAuthService.js')).default;
+                        const authService = new DualFacilityAuthService();
+                        const cookieData = await authService.getCookie(requestedLocation);
+                        
+                        if (!cookieData || !cookieData.cookie) {
+                            console.error('❌ No valid authentication cookie for', requestedLocation);
+                            res.set('Content-Type', 'text/plain');
+                            return res.send('Prepáčte, technická chyba pri autentifikácii. Skúste to znova za chvíľu.');
+                        }
+                        
+                        // Determine facility slug
+                        const facilitySlug = requestedLocation === 'bratislava' 
+                            ? 'refresh-laserove-a-esteticke-studio-zu0yxr5l'
+                            : 'refresh-laserove-a-esteticke-studio';
+                        
+                        // Calculate duration based on service (default 60 minutes)
+                        const duration = selectedService.duration || 60;
+                        const [hours, minutes] = bookingTime.split(':');
+                        const startTime = new Date();
+                        startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                        const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+                        const timeTo = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+                        
+                        // Prepare booking payload
+                        const bookingPayload = {
+                            event: {
+                                type: 0, // Regular booking
+                                service: { value: parseInt(selectedService.serviceId) },
+                                count: 0,
+                                dateFrom: bookingDate,
+                                dateTo: bookingDate,
+                                timeFrom: bookingTime,
+                                timeTo: timeTo,
+                                duration: duration,
+                                name: customerName,
+                                email: customerEmail || 'no-email@example.com',
+                                phone: customerPhone,
+                                note: `Rezervácia vytvorená cez ElevenLabs AI asistenta pre ${requestedLocation}`
+                            },
+                            facility: facilitySlug
+                        };
+                        
+                        console.log('📤 Posting booking to Bookio:', JSON.stringify(bookingPayload, null, 2));
+                        
+                        // Make the actual booking API call
+                        const bookingResponse = await axios.post(
+                            'https://services.bookio.com/client-admin/api/schedule/event/save',
+                            bookingPayload,
+                            {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'Cookie': cookieData.cookie,
+                                    'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
+                                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                timeout: 15000
+                            }
+                        );
+                        
+                        console.log('✅ Booking API response:', bookingResponse.status, bookingResponse.data);
+                        
+                        if (bookingResponse.status === 200 && bookingResponse.data) {
+                            // Success - real booking created
+                            const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
+                            
+                            console.log('🎉 REAL BOOKING SUCCESSFULLY CREATED IN BOOKIO');
+                            
+                            response = `Perfektné! Vaša rezervácia bola SKUTOČNE vytvorená v systéme Bookio.\n`;
+                            response += `📋 ${selectedService.name}\n`;
+                            response += `📅 ${bookingDate} o ${bookingTime}\n`;
+                            response += `📍 ${locationInfo ? locationInfo.name : requestedLocation}\n\n`;
+                            response += `Rezervácia je potvrdená a zobrazuje sa vo vašom kalendári.`;
+                        } else {
+                            throw new Error(`Unexpected response: ${bookingResponse.status}`);
+                        }
+                        
+                    } catch (bookingError) {
+                        console.error('❌ BOOKING FAILED:', bookingError.message);
+                        console.error('❌ Error details:', bookingError.response?.data || bookingError.stack);
+                        
+                        // Inform user of booking failure
+                        response = `Prepáčte, nepodarilo sa vytvoriť rezerváciu.\n`;
+                        response += `Chyba: ${bookingError.response?.status || 'Network error'}\n\n`;
+                        response += `Prosím, skúste to znova alebo nás kontaktujte priamo.`;
+                    }
                     
                     res.set('Content-Type', 'text/plain');
                     return res.send(response);
