@@ -27,18 +27,52 @@ class DatabaseConnection {
             console.log('Database URL exists:', !!process.env.DATABASE_URL);
             console.log('NODE_ENV:', process.env.NODE_ENV);
             
-            if (!process.env.DATABASE_URL) {
-                throw new Error('DATABASE_URL environment variable is not set');
+            // Remove DATABASE_URL requirement since Railway uses template variables
+            
+            // Create connection pool - try different approaches
+            let poolConfig;
+            
+            if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('{{')) {
+                // Use DATABASE_URL if it's properly resolved
+                poolConfig = {
+                    connectionString: process.env.DATABASE_URL,
+                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                };
+            } else if (process.env.PGHOST && process.env.PGUSER && process.env.PGPASSWORD && process.env.PGDATABASE) {
+                // Build from individual PG variables
+                poolConfig = {
+                    host: process.env.PGHOST,
+                    port: parseInt(process.env.PGPORT) || 5432,
+                    user: process.env.PGUSER,
+                    password: process.env.PGPASSWORD,
+                    database: process.env.PGDATABASE,
+                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                };
+                console.log('🔧 Using individual PG environment variables');
+            } else if (process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
+                // Build from Railway POSTGRES_ variables
+                poolConfig = {
+                    host: process.env.RAILWAY_PRIVATE_DOMAIN,
+                    port: 5432,
+                    user: process.env.POSTGRES_USER,
+                    password: process.env.POSTGRES_PASSWORD,
+                    database: process.env.POSTGRES_DB,
+                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                };
+                console.log('🔧 Using Railway POSTGRES_ variables');
+                console.log('Host:', process.env.RAILWAY_PRIVATE_DOMAIN);
+                console.log('Database:', process.env.POSTGRES_DB);
+                console.log('User:', process.env.POSTGRES_USER);
+            } else {
+                throw new Error('No valid database configuration found in environment variables');
             }
             
-            // Create connection pool
-            this.pool = new Pool({
-                connectionString: process.env.DATABASE_URL,
-                ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-                max: 10, // Maximum connections in pool
-                idleTimeoutMillis: 30000,
-                connectionTimeoutMillis: 10000, // Increased timeout
-            });
+            // Add common pool settings
+            poolConfig.max = 10;
+            poolConfig.idleTimeoutMillis = 30000;
+            poolConfig.connectionTimeoutMillis = 10000;
+            
+            this.pool = new Pool(poolConfig);
             
             console.log('✅ Database pool created');
 
