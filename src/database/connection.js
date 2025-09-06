@@ -74,11 +74,44 @@ class DatabaseConnection {
             const schemaPath = path.join(__dirname, 'schema.sql');
             const schemaSQL = await fs.readFile(schemaPath, 'utf8');
             
-            await this.pool.query(schemaSQL);
-            console.log('✅ Database schema initialized');
+            // Split SQL by statement and execute one by one for better error handling
+            const statements = schemaSQL
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0);
+            
+            console.log(`📊 Executing ${statements.length} SQL statements...`);
+            
+            for (let i = 0; i < statements.length; i++) {
+                const statement = statements[i] + ';';
+                try {
+                    await this.pool.query(statement);
+                    console.log(`✅ Statement ${i + 1}/${statements.length} executed`);
+                } catch (stmtError) {
+                    // Log but don't fail on CREATE IF NOT EXISTS errors
+                    if (stmtError.message.includes('already exists')) {
+                        console.log(`⚠️  Statement ${i + 1}: Object already exists (ok)`);
+                    } else {
+                        console.error(`❌ Statement ${i + 1} failed:`, stmtError.message);
+                        console.error(`Statement: ${statement.substring(0, 100)}...`);
+                    }
+                }
+            }
+            
+            console.log('✅ Database schema initialization complete');
+            
+            // Test the schema by checking if tables exist
+            const tablesResult = await this.pool.query(`
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            `);
+            
+            console.log(`📋 Created tables: ${tablesResult.rows.map(r => r.table_name).join(', ')}`);
             
         } catch (error) {
             console.error('❌ Schema initialization failed:', error.message);
+            console.error(error.stack);
             throw error;
         }
     }

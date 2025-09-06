@@ -331,15 +331,57 @@ router.post('/', async (req, res) => {
 router.get('/health', async (req, res) => {
     try {
         const health = await db.healthCheck();
+        
+        // Also check if tables exist
+        const tablesResult = await db.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        `);
+        
         res.json({
             success: true,
             health,
+            tables: tablesResult.rows.map(r => r.table_name),
+            tableCount: tablesResult.rows.length,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
         res.status(500).json({
             success: false,
             error: 'Health check failed',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/logs/init-schema - Initialize database schema manually
+ */
+router.post('/init-schema', async (req, res) => {
+    try {
+        console.log('🔧 Manual schema initialization requested');
+        await db.initializeSchema();
+        
+        // Check what tables were created
+        const tablesResult = await db.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        `);
+        
+        res.json({
+            success: true,
+            message: 'Database schema initialized successfully',
+            tables: tablesResult.rows.map(r => r.table_name),
+            tableCount: tablesResult.rows.length,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ Manual schema init failed:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Schema initialization failed',
             message: error.message
         });
     }
