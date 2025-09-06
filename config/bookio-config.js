@@ -66,17 +66,17 @@ const environments = {
         facilities: {
             bratislava: {
                 name: 'Bratislava',
-                facility: 'refresh-laserove-a-esteticke-studio',
-                widgetPath: '/refresh-laserove-a-esteticke-studio/widget',
-                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk',
-                facilityId: 'refresh-laserove-a-esteticke-studio'
-            },
-            pezinok: {
-                name: 'Pezinok', 
                 facility: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
                 widgetPath: '/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget',
                 widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk',
                 facilityId: 'refresh-laserove-a-esteticke-studio-zu0yxr5l'
+            },
+            pezinok: {
+                name: 'Pezinok', 
+                facility: 'refresh-laserove-a-esteticke-studio',
+                widgetPath: '/refresh-laserove-a-esteticke-studio/widget',
+                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk',
+                facilityId: 'refresh-laserove-a-esteticke-studio'
             }
         },
         

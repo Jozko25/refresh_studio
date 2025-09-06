@@ -19,17 +19,19 @@ class DualFacilityAuthService {
         this.context = null;
         this.page = null;
         
-        // Facility configurations
+        // Facility configurations (corrected)
         this.facilities = {
             bratislava: {
-                slug: 'refresh-laserove-a-esteticke-studio',
+                slug: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
                 name: 'REFRESH Bratislava',
-                referer: 'https://services.bookio.com/client-admin/refresh-laserove-a-esteticke-studio/schedule'
+                referer: 'https://services.bookio.com/client-admin/refresh-laserove-a-esteticke-studio-zu0yxr5l/schedule',
+                tokenFile: 'jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l'
             },
             pezinok: {
-                slug: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
+                slug: 'refresh-laserove-a-esteticke-studio',
                 name: 'REFRESH Pezinok', 
-                referer: 'https://services.bookio.com/client-admin/refresh-laserove-a-esteticke-studio-zu0yxr5l/schedule'
+                referer: 'https://services.bookio.com/client-admin/refresh-laserove-a-esteticke-studio/schedule',
+                tokenFile: 'jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio'
             }
         };
         
