@@ -713,26 +713,85 @@ router.post('/', async (req, res) => {
                 break;
 
             case 'request_booking':
+                // Step 1: Validate service
                 if (!service_name && !search_term) {
                     res.set('Content-Type', 'text/plain');
-                    return res.send("Potrebujem vedieť akú službu chcete rezervovať.");
+                    return res.send("Ahoj! Rád vám pomôžem s rezerváciou. Akú službu si želáte rezervovať? (napr. hydrafacial, laserová epilácia, mezoterapia)");
                 }
                 
-                if (!customer_name && !user_name) {
+                // Step 2: Validate location
+                if (!location && !preferred_location) {
                     res.set('Content-Type', 'text/plain');
-                    return res.send("Potrebujem vedieť vaše meno pre rezerváciu.");
+                    return res.send("V ktorej pobočke chcete rezerváciu?\n\n🏢 Bratislava - Lazaretská 13\n🏢 Pezinok\n\nProsím povedzte 'Bratislava' alebo 'Pezinok'.");
                 }
 
-                // Detect location from search_term or use provided location
-                const bookingLocation = detectLocation(search_term, location || preferred_location) || 'pezinok';
+                const bookingLocation = location || preferred_location;
+
+                // Step 3: If no date specified, offer to find soonest available slots
+                if (!date) {
+                    // Try to find the service first to show available slots
+                    try {
+                        const searchResult = await LocationBookioService.searchServices(service_name || search_term, bookingLocation);
+                        if (searchResult.success && searchResult.services.length > 0) {
+                            const service = searchResult.services[0];
+                            // Get available slots for next few days
+                            const lookupResult = await WidgetFlowService.quickServiceLookup(service.name, "06.09.2025");
+                            
+                            if (lookupResult.success && lookupResult.availability.totalSlots > 0) {
+                                response = `Našiel som službu: ${service.name}\n`;
+                                response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
+                                response += `📅 Dostupné termíny na 06.09.2025:\n`;
+                                
+                                if (lookupResult.availability.morningTimes.length > 0) {
+                                    response += `🌅 Dopoludnia: ${lookupResult.availability.morningTimes.slice(0, 3).join(', ')}\n`;
+                                }
+                                if (lookupResult.availability.afternoonTimes.length > 0) {
+                                    response += `🌆 Popoludní: ${lookupResult.availability.afternoonTimes.slice(0, 3).join(', ')}\n`;
+                                }
+                                
+                                response += `\nKtorý dátum a čas by vám vyhovoval? Alebo chcete iný dátum?`;
+                            } else {
+                                response = `Našiel som službu: ${service.name}\n`;
+                                response += `Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).`;
+                            }
+                        } else {
+                            response = `Službu "${service_name || search_term}" som nenašiel. Skúste iný názov alebo zadajte dátum rezervácie vo formáte DD.MM.YYYY.`;
+                        }
+                    } catch (error) {
+                        response = "Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).";
+                    }
+                    
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(response);
+                }
+
+                // Step 4: Validate time
+                if (!time) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`Výborne! Dátum ${date} je zapísaný. Teraz prosím zadajte čas vo formáte HH:MM (napr. 14:30, 10:00).`);
+                }
+
+                // Step 5: Validate customer name
+                if (!customer_name && !user_name) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`Perfektne! Termín ${date} o ${time} je zapísaný. Teraz prosím zadajte vaše meno a priezvisko.`);
+                }
+
+                // Step 6: Validate phone
+                if (!phone && !user_phone) {
+                    res.set('Content-Type', 'text/plain');
+                    return res.send(`Ďakujem ${customer_name || user_name}! Posledná vec - prosím zadajte vaše telefónne číslo pre potvrdenie rezervácie.`);
+                }
+
+                // All required info collected - create booking
                 
-                // Prepare booking request data
+                // Prepare booking request data (all required fields now validated)
                 const bookingRequest = {
-                    serviceName: service_name || search_term || 'Služba nešpecifikovaná',
-                    customerName: customer_name || user_name || 'Nezadané',
-                    date: date || 'Nešpecifikovaný',
-                    time: time || 'Nešpecifikovaný', 
-                    phone: phone || user_phone || 'Nezadané',
+                    serviceName: service_name || search_term,
+                    customerName: customer_name || user_name,
+                    date: date,
+                    time: time, 
+                    phone: phone || user_phone,
                     note: note || '',
                     location: bookingLocation
                 };
