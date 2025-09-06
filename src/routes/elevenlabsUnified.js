@@ -1346,24 +1346,7 @@ router.post('/', async (req, res) => {
                                 selectedCountry: "sk",
                                 email: customerEmail || 'no-email@example.com',
                                 price: selectedService.price || 100,
-                                resObjects: [
-                                    {
-                                        id: "u_17785",
-                                        value: 17785,
-                                        label: "Valika",
-                                        title: "Valika",
-                                        color: "#ec407a",
-                                        capacity: 1,
-                                        businessHours: [
-                                            {"dow": [1], "start": "08:30", "end": "14:30"},
-                                            {"dow": [5], "start": "08:30", "end": "14:30"},
-                                            {"dow": [3], "start": "08:30", "end": "14:30"},
-                                            {"dow": [4], "start": "08:30", "end": "14:30"},
-                                            {"dow": [2], "start": "08:30", "end": "14:30"}
-                                        ],
-                                        out: null
-                                    }
-                                ],
+                                resObjects: [],
                                 autoConfirmCustomer: null,
                                 width: 1728,
                                 height: 1117,
