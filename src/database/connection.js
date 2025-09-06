@@ -26,6 +26,9 @@ class DatabaseConnection {
             console.log('🔌 Initializing database connection...');
             console.log('Database URL exists:', !!process.env.DATABASE_URL);
             console.log('NODE_ENV:', process.env.NODE_ENV);
+            console.log('POSTGRES_USER:', process.env.POSTGRES_USER);
+            console.log('POSTGRES_DB:', process.env.POSTGRES_DB);
+            console.log('POSTGRES_PASSWORD exists:', !!process.env.POSTGRES_PASSWORD);
             
             // Remove DATABASE_URL requirement since Railway uses template variables
             
@@ -49,22 +52,32 @@ class DatabaseConnection {
                     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
                 };
                 console.log('🔧 Using individual PG environment variables');
-            } else if (process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
-                // Build from Railway POSTGRES_ variables using internal networking
-                poolConfig = {
-                    host: 'postgres.railway.internal', // Use Railway internal domain
-                    port: 5432,
-                    user: process.env.POSTGRES_USER,
-                    password: process.env.POSTGRES_PASSWORD,
-                    database: process.env.POSTGRES_DB,
-                    ssl: false, // No SSL needed for internal networking
-                };
-                console.log('🔧 Using Railway internal networking');
-                console.log('Host: postgres.railway.internal');
-                console.log('Database:', process.env.POSTGRES_DB);
-                console.log('User:', process.env.POSTGRES_USER);
             } else {
-                throw new Error('No valid database configuration found in environment variables');
+                // Build from Railway environment variables using internal networking
+                // Try different possible variable names that Railway might use
+                const dbHost = process.env.PGHOST || 'postgres.railway.internal';
+                const dbPort = parseInt(process.env.PGPORT) || 5432;
+                const dbUser = process.env.PGUSER || process.env.POSTGRES_USER || 'postgres';
+                const dbPassword = process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD;
+                const dbName = process.env.PGDATABASE || process.env.POSTGRES_DB || process.env.POSTGRES_DATABASE;
+                
+                if (!dbPassword || !dbName) {
+                    throw new Error('Missing required database credentials');
+                }
+                
+                poolConfig = {
+                    host: dbHost,
+                    port: dbPort,
+                    user: dbUser,
+                    password: dbPassword,
+                    database: dbName,
+                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                };
+                console.log('🔧 Using Railway database configuration');
+                console.log('Host:', dbHost);
+                console.log('Port:', dbPort);
+                console.log('Database:', dbName);
+                console.log('User:', dbUser);
             }
             
             // Add common pool settings
