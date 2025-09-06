@@ -37,7 +37,9 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP to allow dashboard JavaScript
+}));
 app.use(cors());
 app.use(morgan('combined'));
 app.use(limiter);
