@@ -50,17 +50,17 @@ class DatabaseConnection {
                 };
                 console.log('🔧 Using individual PG environment variables');
             } else if (process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
-                // Build from Railway POSTGRES_ variables
+                // Build from Railway POSTGRES_ variables using internal networking
                 poolConfig = {
-                    host: process.env.RAILWAY_PRIVATE_DOMAIN,
+                    host: 'postgres.railway.internal', // Use Railway internal domain
                     port: 5432,
                     user: process.env.POSTGRES_USER,
                     password: process.env.POSTGRES_PASSWORD,
                     database: process.env.POSTGRES_DB,
-                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                    ssl: false, // No SSL needed for internal networking
                 };
-                console.log('🔧 Using Railway POSTGRES_ variables');
-                console.log('Host:', process.env.RAILWAY_PRIVATE_DOMAIN);
+                console.log('🔧 Using Railway internal networking');
+                console.log('Host: postgres.railway.internal');
                 console.log('Database:', process.env.POSTGRES_DB);
                 console.log('User:', process.env.POSTGRES_USER);
             } else {
