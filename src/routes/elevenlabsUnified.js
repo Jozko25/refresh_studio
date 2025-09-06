@@ -1279,29 +1279,8 @@ router.post('/', async (req, res) => {
                     // Get location info for Zapier
                     const locationInfo = LocationBookioService.getLocationInfo(requestedLocation);
                     
-                    // Send to Zapier webhook
-                    try {
-                        const webhookPayload = {
-                            customer_name: customerName,
-                            customer_email: customerEmail || 'no-email@example.com',
-                            customer_phone: customerPhone,
-                            service_id: selectedService.serviceId,
-                            service_name: selectedService.name,
-                            date: bookingDate,
-                            time: bookingTime,
-                            location: locationInfo ? locationInfo.name : requestedLocation,
-                            location_address: locationInfo ? locationInfo.address : requestedLocation,
-                            source: 'ElevenLabs Voice Agent (refresh_booking)',
-                            booking_link: locationInfo ? locationInfo.widget_url : 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
-                        };
-                        
-                        await axios.post('https://hooks.zapier.com/hooks/catch/22535098/utnkmyf/', webhookPayload, {
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        console.log('📨 Booking data sent to Zapier webhook successfully');
-                    } catch (zapierError) {
-                        console.log('📨 Zapier webhook failed (non-critical):', zapierError.message);
-                    }
+                    // Zapier webhook disabled per user request
+                    console.log('📨 Zapier webhook disabled - no external notifications sent');
                     
                     response = `Perfektné! Vaša rezervácia bola zaznamenaná.\n`;
                     response += `📋 ${selectedService.name}\n`;
