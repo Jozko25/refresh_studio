@@ -13,13 +13,13 @@
     "request_body_schema": {
       "id": "body",
       "type": "object",
-      "description": "Extract the tool name and relevant parameters from the user's request. CRITICAL: For 'najbližší/najrýchlejší termín' ALWAYS use 'location_booking' with search_term = 'service + location' (e.g. 'hydrafacial bratislava'). This tool automatically finds the soonest available slot. NEVER use specific dates for 'nearest appointment' requests.",
+      "description": "Extract the tool name and relevant parameters from the user's request. CRITICAL: For 'najbližší/najrýchlejší termín' implement 3-STEP VERIFICATION: 1) Use 'location_booking' with search_term = 'service + location' 2) Use 'search_service' to get service_id then 'find_soonest_slot' with worker_id = -1 3) Use 'search_services' to find similar services with different workers. Compare ALL results to find truly soonest slot across all workers and service variants.",
       "properties": [
         {
           "id": "tool_name",
           "type": "string",
           "value_type": "llm_prompt",
-          "description": "Nástroj ktorý chcete použiť - KRITICKÉ: Pre 'najbližší termín' VŽDY použite 'location_booking' s 'služba + lokácia', NIE konkrétny dátum! Dostupné: location_booking (pre najbližší termín), search_service, find_soonest_slot, search_services, confirm_booking, get_services_overview, get_opening_hours",
+          "description": "Nástroj ktorý chcete použiť - KRITICKÉ: Pre 'najbližší termín' implementujte 3-KROKOVÝ PROCES: 1) location_booking 2) search_service + find_soonest_slot s worker_id = -1 3) search_services pre podobné služby. Dostupné: location_booking, search_service, find_soonest_slot, search_services, confirm_booking, get_services_overview, get_opening_hours",
           "dynamic_variable": "",
           "constant_value": "",
           "required": true
