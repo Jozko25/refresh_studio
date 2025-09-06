@@ -1279,13 +1279,15 @@ router.post('/', async (req, res) => {
                         // Get the authenticated cookie for the facility
                         const DualFacilityAuthService = (await import('../services/DualFacilityAuthService.js')).default;
                         const authService = new DualFacilityAuthService();
-                        const cookieData = await authService.getCookie(requestedLocation);
+                        const cookieString = await authService.getCookie(requestedLocation);
                         
-                        if (!cookieData || !cookieData.cookie) {
+                        if (!cookieString) {
                             console.error('❌ No valid authentication cookie for', requestedLocation);
                             res.set('Content-Type', 'text/plain');
                             return res.send('Prepáčte, technická chyba pri autentifikácii. Skúste to znova za chvíľu.');
                         }
+                        
+                        console.log('🔑 Using cookie for booking:', cookieString.substring(0, 20) + '...');
                         
                         // Determine facility slug
                         const facilitySlug = requestedLocation === 'bratislava' 
@@ -1329,7 +1331,7 @@ router.post('/', async (req, res) => {
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
-                                    'Cookie': cookieData.cookie,
+                                    'Cookie': cookieString,
                                     'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
                                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
                                     'X-Requested-With': 'XMLHttpRequest'
