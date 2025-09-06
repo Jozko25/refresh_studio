@@ -1278,15 +1278,16 @@ router.post('/', async (req, res) => {
                     try {
                         // Get the authenticated cookie for the facility
                         const authService = (await import('../services/DualFacilityAuthService.js')).default;
-                        const cookieString = await authService.getCookie(requestedLocation);
+                        const cookieData = await authService.getCookie(requestedLocation);
                         
-                        if (!cookieString) {
+                        if (!cookieData) {
                             console.error('❌ No valid authentication cookie for', requestedLocation);
                             res.set('Content-Type', 'text/plain');
                             return res.send('Prepáčte, technická chyba pri autentifikácii. Skúste to znova za chvíľu.');
                         }
                         
-                        console.log('🔑 Using cookie for booking:', cookieString.substring(0, 20) + '...');
+                        console.log('🔑 Cookie data type:', typeof cookieData);
+                        console.log('🔑 Cookie data:', cookieData ? JSON.stringify(cookieData).substring(0, 50) + '...' : 'null');
                         
                         // Determine facility slug
                         const facilitySlug = requestedLocation === 'bratislava' 
@@ -1330,7 +1331,9 @@ router.post('/', async (req, res) => {
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
-                                    'Cookie': cookieString,
+                                    'Cookie': typeof cookieData === 'string' ? cookieData : 
+                                             cookieData.value ? `bses-0=${cookieData.value}` : 
+                                             JSON.stringify(cookieData),
                                     'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
                                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
                                     'X-Requested-With': 'XMLHttpRequest'
