@@ -12,6 +12,41 @@ import RefreshClinicService from '../services/refreshClinicService.js';
 const router = express.Router();
 
 /**
+ * Compare two slots to determine which is earlier
+ */
+function isEarlierSlot(slot1, slot2) {
+    // Parse dates
+    const date1Parts = slot1.date.split('.');
+    const date2Parts = slot2.date.split('.');
+    
+    const date1 = new Date(
+        parseInt(date1Parts[2]), // year
+        parseInt(date1Parts[1]) - 1, // month (0-based)
+        parseInt(date1Parts[0]) // day
+    );
+    
+    const date2 = new Date(
+        parseInt(date2Parts[2]), // year
+        parseInt(date2Parts[1]) - 1, // month (0-based)
+        parseInt(date2Parts[0]) // day
+    );
+    
+    // Compare dates first
+    if (date1.getTime() !== date2.getTime()) {
+        return date1.getTime() < date2.getTime();
+    }
+    
+    // Same date, compare times
+    const time1Parts = slot1.time.split(':');
+    const time2Parts = slot2.time.split(':');
+    
+    const time1Minutes = parseInt(time1Parts[0]) * 60 + parseInt(time1Parts[1]);
+    const time2Minutes = parseInt(time2Parts[0]) * 60 + parseInt(time2Parts[1]);
+    
+    return time1Minutes < time2Minutes;
+}
+
+/**
  * Detect location from search term or return null if unclear
  */
 function detectLocation(searchTerm, existingLocation = null) {
@@ -597,12 +632,76 @@ router.post('/', async (req, res) => {
                                 slotResult = { success: false, error: 'No availability found' };
                             }
                         } else {
-                            // Regular request - get soonest slot
-                            slotResult = await LocationBookioService.findSoonestSlot(
+                            // 🔥 COMPREHENSIVE SOONEST SLOT CHECKING - CHECK ALL SIMILAR SERVICES!
+                            console.log(`🔥 COMPREHENSIVE CHECK: Looking for soonest slot across ALL workers and similar services`);
+                            
+                            // Step 1: Get soonest for this specific service
+                            const primarySlot = await LocationBookioService.findSoonestSlot(
                                 service.serviceId,
                                 locationMatch,
-                                worker_id || -1
+                                -1  // Force check all workers
                             );
+                            
+                            let bestSlot = primarySlot;
+                            console.log(`📅 Primary service slot: ${primarySlot.found ? `${primarySlot.date} o ${primarySlot.time}` : 'none'}`);
+                            
+                            // Step 2: Check similar services (e.g., other HydraFacial variants)
+                            try {
+                                const serviceType = service.name.toLowerCase();
+                                let searchVariants = [];
+                                
+                                if (serviceType.includes('hydrafacial')) {
+                                    searchVariants = ['hydrafacial základ', 'hydrafacial akné', 'hydrafacial krk', 'hydrafacial platinum'];
+                                } else if (serviceType.includes('mezoterapia')) {
+                                    searchVariants = ['mezoterapia', 'mezoterapia vlasy'];
+                                } else if (serviceType.includes('peeling')) {
+                                    searchVariants = ['peeling', 'chemický peeling'];
+                                }
+                                
+                                for (const variant of searchVariants) {
+                                    if (variant === serviceType) continue; // Skip the original service
+                                    
+                                    console.log(`🔍 Checking variant: ${variant}`);
+                                    
+                                    // Search for this service variant
+                                    const variantServices = await BookioDirectService.searchServices(variant, locationMatch);
+                                    
+                                    if (variantServices.success && variantServices.services && variantServices.services.length > 0) {
+                                        for (const variantService of variantServices.services) {
+                                            console.log(`📋 Found variant service: ${variantService.name} (ID: ${variantService.serviceId})`);
+                                            
+                                            const variantSlot = await LocationBookioService.findSoonestSlot(
+                                                variantService.serviceId,
+                                                locationMatch,
+                                                -1  // Check all workers
+                                            );
+                                            
+                                            if (variantSlot.success && variantSlot.found) {
+                                                console.log(`📅 Variant slot found: ${variantSlot.date} o ${variantSlot.time}`);
+                                                
+                                                // Compare with current best slot
+                                                if (!bestSlot.found || isEarlierSlot(variantSlot, bestSlot)) {
+                                                    bestSlot = {
+                                                        ...variantSlot,
+                                                        originalService: service.name,
+                                                        actualService: variantService.name,
+                                                        serviceId: variantService.serviceId,
+                                                        price: variantService.price || service.price,
+                                                        duration: variantService.duration || service.duration
+                                                    };
+                                                    console.log(`✅ NEW BEST SLOT: ${bestSlot.date} o ${bestSlot.time} from ${variantService.name}`);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                            } catch (variantError) {
+                                console.error(`❌ Error checking service variants:`, variantError);
+                            }
+                            
+                            slotResult = bestSlot;
+                            console.log(`🏆 FINAL BEST SLOT: ${slotResult.found ? `${slotResult.date} o ${slotResult.time}` : 'none found'}`);
                         }
                         
                         console.log(`⏰ Availability result:`, JSON.stringify(slotResult, null, 2));
@@ -611,8 +710,13 @@ router.post('/', async (req, res) => {
                         slotResult = { success: false, error: error.message };
                     }
                     
-                    response = `Služba: ${service.name}\n`;
-                    response += `Cena: ${service.price}, Trvanie: ${service.duration}\n`;
+                    // Use actual service info if different service was found
+                    const actualServiceName = slotResult.actualService || service.name;
+                    const actualPrice = slotResult.price || service.price;
+                    const actualDuration = slotResult.duration || service.duration;
+                    
+                    response = `Služba: ${actualServiceName}\n`;
+                    response += `Cena: ${actualPrice}, Trvanie: ${actualDuration}\n`;
                     response += `Miesto: ${locationMatch === 'bratislava' ? 'Bratislava - Lazaretská 13' : 'Pezinok'}\n\n`;
                     
                     // Check if we have real availability
