@@ -655,7 +655,10 @@
                     <td>${log.facility ? `<span class="facility-badge ${log.facility}">${log.facility}</span>` : '-'}</td>
                     <td class="message">${escapeHtml(log.message)}</td>
                     <td class="data-preview" onclick="showData('${escapeHtml(JSON.stringify(log.data))}')">
-                        ${log.data ? JSON.stringify(log.data).substring(0, 50) + '...' : '-'}
+                        ${log.category === 'API' && log.data ? 
+                            `${log.data.method || 'GET'} ${log.data.endpoint || log.data.fullUrl || ''} (${log.data.duration || '?'}ms, ${log.data.status || '?'})` : 
+                            (log.data ? JSON.stringify(log.data).substring(0, 50) + '...' : '-')
+                        }
                     </td>
                 </tr>
             `).join('');
@@ -813,7 +816,13 @@
         }
 
         function showData(data) {
-            alert(data);
+            try {
+                const parsed = JSON.parse(data);
+                const formatted = JSON.stringify(parsed, null, 2);
+                alert(formatted);
+            } catch (e) {
+                alert(data);
+            }
         }
     </script>
 </body>
