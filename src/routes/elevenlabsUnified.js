@@ -727,45 +727,64 @@ router.post('/', async (req, res) => {
 
                 const bookingLocation = location || preferred_location;
 
-                // Step 3: If no date specified, offer to find soonest available slots
+                // Step 3: If no date specified, automatically find and show soonest available slots
                 if (!date) {
                     // Try to find the service first to show available slots
                     try {
                         const searchResult = await LocationBookioService.searchServices(service_name || search_term, bookingLocation);
                         if (searchResult.success && searchResult.services.length > 0) {
                             const service = searchResult.services[0];
-                            // Get available slots for next few days - use current date + 1
-                            const tomorrow = new Date();
-                            tomorrow.setDate(tomorrow.getDate() + 1);
-                            const tomorrowStr = tomorrow.toLocaleDateString('sk-SK', {
-                                day: '2-digit',
-                                month: '2-digit', 
-                                year: 'numeric'
-                            });
-                            const lookupResult = await WidgetFlowService.quickServiceLookup(service.name, tomorrowStr);
                             
-                            if (lookupResult.success && lookupResult.availability.totalSlots > 0) {
+                            // Check multiple days to find soonest available slots
+                            let soonestSlots = null;
+                            let soonestDate = null;
+                            
+                            // Check next 7 days for availability
+                            for (let daysFromNow = 1; daysFromNow <= 7; daysFromNow++) {
+                                const checkDate = new Date();
+                                checkDate.setDate(checkDate.getDate() + daysFromNow);
+                                const dateStr = checkDate.toLocaleDateString('sk-SK', {
+                                    day: '2-digit',
+                                    month: '2-digit', 
+                                    year: 'numeric'
+                                });
+                                
+                                try {
+                                    const lookupResult = await WidgetFlowService.quickServiceLookup(service.name, dateStr);
+                                    if (lookupResult.success && lookupResult.availability.totalSlots > 0) {
+                                        soonestSlots = lookupResult.availability;
+                                        soonestDate = dateStr;
+                                        break; // Found the soonest available date
+                                    }
+                                } catch (error) {
+                                    console.log(`Failed to check ${dateStr}, continuing...`);
+                                    continue;
+                                }
+                            }
+                            
+                            if (soonestSlots && soonestDate) {
                                 response = `Našiel som službu: ${service.name}\n`;
                                 response += `Cena: ${service.price}, Trvanie: ${service.duration}\n\n`;
-                                response += `📅 Dostupné termíny na ${tomorrowStr}:\n`;
+                                response += `📅 Najbližšie dostupné termíny sú ${soonestDate}:\n`;
                                 
-                                if (lookupResult.availability.morningTimes.length > 0) {
-                                    response += `🌅 Dopoludnia: ${lookupResult.availability.morningTimes.slice(0, 3).join(', ')}\n`;
+                                if (soonestSlots.morningTimes.length > 0) {
+                                    response += `🌅 Dopoludnia: ${soonestSlots.morningTimes.slice(0, 3).join(', ')}\n`;
                                 }
-                                if (lookupResult.availability.afternoonTimes.length > 0) {
-                                    response += `🌆 Popoludní: ${lookupResult.availability.afternoonTimes.slice(0, 3).join(', ')}\n`;
+                                if (soonestSlots.afternoonTimes.length > 0) {
+                                    response += `🌆 Popoludní: ${soonestSlots.afternoonTimes.slice(0, 3).join(', ')}\n`;
                                 }
                                 
-                                response += `\nKtorý dátum a čas by vám vyhovoval? Alebo chcete iný dátum?`;
+                                response += `\nKtorý čas by vám vyhovoval? Môžete povedať dátum a čas (napr. "${soonestDate} 14:30").`;
                             } else {
                                 response = `Našiel som službu: ${service.name}\n`;
-                                response += `Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).`;
+                                response += `Momentálne nemám dostupné termíny v najbližších dňoch. Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).`;
                             }
                         } else {
-                            response = `Službu "${service_name || search_term}" som nenašiel. Skúste iný názov alebo zadajte dátum rezervácie vo formáte DD.MM.YYYY.`;
+                            response = `Službu "${service_name || search_term}" som nenašiel. Skúste iný názov služby.`;
                         }
                     } catch (error) {
-                        response = "Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).";
+                        console.error('Error finding soonest slots:', error);
+                        response = "Nastala chyba pri hľadaní dostupných termínov. Prosím zadajte dátum kedy chcete rezerváciu vo formáte DD.MM.YYYY (napr. 15.09.2025).";
                     }
                     
                     res.set('Content-Type', 'text/plain');

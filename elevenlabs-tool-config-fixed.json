@@ -1,0 +1,101 @@
+{
+  "type": "webhook",
+  "name": "refresh_clinic_booking",
+  "description": "Complete booking system for REFRESH Clinic with dual facility support (Bratislava and Pezinok). Handles service searches, appointment availability, and booking creation with comprehensive error handling and monitoring. GPT-4o powered service matching with 339+ treatments.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://refreshstudio-production.up.railway.app/api/elevenlabs",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Complete REFRESH clinic booking system with dual facility support, smart service matching, real-time availability, and comprehensive booking management for Bratislava and Pezinok locations.",
+      "properties": [
+        {
+          "id": "tool_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Main tool function - always use 'request_booking' for booking requests",
+          "dynamic_variable": "",
+          "constant_value": "request_booking",
+          "required": true
+        },
+        {
+          "id": "service_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Name of the service customer wants to book",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "location",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Clinic location: 'bratislava' (Lazaretská location) or 'pezinok' (main facility). Customer must choose one location.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true
+        },
+        {
+          "id": "date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Appointment date in DD.MM.YYYY format (e.g., '15.06.2025'). Leave empty for system to show available slots for soonest dates.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "time",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Appointment time in HH:MM format (e.g., '14:30'). Leave empty initially to see available times.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "customer_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Full customer name for booking - collected after customer selects time slot",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Customer phone number in international format (e.g., '+421910123456'). Collected after customer provides name.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        },
+        {
+          "id": "note",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Additional notes or comments from customer",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 25,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
