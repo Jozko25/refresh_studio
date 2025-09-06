@@ -1,0 +1,27 @@
+{
+  "id": "jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l",
+  "username": "jurkovicova.jana@gmail.com",
+  "environment": "Production",
+  "facility": "refresh-laserove-a-esteticke-studio-zu0yxr5l",
+  "cookie": {
+    "name": "bses-0",
+    "value": "Pa9RgfSIm3B1quRYAv5CDJ3MrRrH8BHhxQAAGFa6hiFHXozReF8IxF7ROr0QuHqGtAuePTMK9aaCCrF7USfZ1wVIxtpMu2DXtY1ILOzMXc91oScxJtldKs3a4s9rY4VhfqLkrwh+M0WlpxFSHbRPw1jMxLCHPhstrwr9lh9j2aDIh1S30QOjtZE+JYV4lg/LF46QEgTMTCsp7Udt6QY1GMzYehiirECN4JOR01YUwReYxl1sdR0fTs83YbVa6oXkHFDyKAxuy9CUllh0f7HdTP0ym6PJf8DNHRTwGuo5OeylOO+qwVuyNKZQ0X1AAMJ9YlYIDUU0UbDsUUre/dgsbbP3nqK0h+QFL+5P4G0o8AqXGpNZNuGcEwmEiCotD3RYHcjTSJcyZT1BQR8G9hECYj0zZWUyJudpOULdDSsuTqLs4DbYwZ9mmo0HQ5nGFAI1I0cOBT369h72Ll16MVmKBmDzOYpbXpy1XyCMZG5CaxSv2uMNTxMGIQNV17qZxDhn",
+    "domain": "services.bookio.com",
+    "path": "/",
+    "expires": 1757194170.70674,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  "expiry": "2025-09-06T21:29:31.231Z",
+  "refreshTime": "2025-09-06T09:29:31.231Z",
+  "createdAt": "2025-09-06T09:29:31.231Z",
+  "lastUsed": "2025-09-06T09:41:33.624Z",
+  "useCount": 2,
+  "isActive": true,
+  "metadata": {
+    "userAgent": "Bookio-Auth-System",
+    "ipAddress": "localhost",
+    "version": "1.0.0"
+  }
+}

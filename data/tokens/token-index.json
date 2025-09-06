@@ -1,12 +1,22 @@
 {
-  "info_airecepcia_sk_Demo_ai-recepcia-zll65ixf": {
-    "id": "info_airecepcia_sk_Demo_ai-recepcia-zll65ixf",
-    "username": "info@airecepcia.sk",
-    "environment": "Demo",
-    "facility": "ai-recepcia-zll65ixf",
-    "expiry": "2025-09-06T00:15:46.016Z",
-    "lastUsed": "2025-09-05T12:15:46.017Z",
+  "your-production-email_example_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l": {
+    "id": "your-production-email_example_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l",
+    "username": "your-production-email@example.com",
+    "environment": "Production",
+    "facility": "refresh-laserove-a-esteticke-studio-zu0yxr5l",
+    "expiry": "2025-09-06T21:18:12.019Z",
+    "lastUsed": "2025-09-06T09:18:12.022Z",
     "isActive": true,
-    "createdAt": "2025-09-05T12:15:46.017Z"
+    "createdAt": "2025-09-06T09:18:12.021Z"
+  },
+  "jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l": {
+    "id": "jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l",
+    "username": "jurkovicova.jana@gmail.com",
+    "environment": "Production",
+    "facility": "refresh-laserove-a-esteticke-studio-zu0yxr5l",
+    "expiry": "2025-09-06T21:29:31.231Z",
+    "lastUsed": "2025-09-06T09:29:31.231Z",
+    "isActive": true,
+    "createdAt": "2025-09-06T09:29:31.231Z"
   }
 }

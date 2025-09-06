@@ -4,7 +4,7 @@
  */
 
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ override: true });
 
 // Set this to 'demo' for testing or 'production' for live
 const ENVIRONMENT = process.env.BOOKIO_ENV || 'demo';
@@ -78,9 +78,9 @@ const environments = {
             }
         },
         
-        // Default facility (Bratislava)
-        widgetPath: '/refresh-laserove-a-esteticke-studio/widget',
-        facility: 'refresh-laserove-a-esteticke-studio',
+        // Default facility (Pezinok - the one we tested)
+        widgetPath: '/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget',
+        facility: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
         
         // API Endpoints
         endpoints: {

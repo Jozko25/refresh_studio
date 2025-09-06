@@ -1,5 +1,7 @@
 import bookioAuthService from './bookioAuthService.js';
 import config from '../../config/bookio-config.js';
+import logger from './logger.js';
+import emailNotifier from './emailNotifier.js';
 
 /**
  * Bookio Scheduler Service
@@ -37,6 +39,13 @@ class BookioScheduler {
             console.log(`⏰ Starting Bookio Auth Scheduler (${config.name} environment)`);
             console.log(`   Refresh interval: ${this.refreshInterval / 1000 / 60} minutes`);
             
+            // Log scheduler startup
+            await logger.logScheduler('starting', {
+                environment: config.name,
+                refreshInterval: this.refreshInterval,
+                pid: process.pid
+            });
+            
             // Initialize auth service first
             await bookioAuthService.initialize();
             
@@ -56,11 +65,33 @@ class BookioScheduler {
                 nextRefresh: status.nextRefresh
             });
             
+            // Log successful startup
+            await logger.logScheduler('started', {
+                environment: config.name,
+                refreshInterval: this.refreshInterval,
+                nextRefresh: status.nextRefresh
+            });
+            
+            // Send startup notification
+            await emailNotifier.notifySchedulerEvent('started', {
+                refreshInterval: this.refreshInterval,
+                nextRefresh: status.nextRefresh
+            });
+            
             return true;
             
         } catch (error) {
             console.error('❌ Failed to start scheduler:', error.message);
             this.isRunning = false;
+            
+            // Log startup failure
+            await logger.logError('Scheduler startup failed', error, 'SCHEDULER');
+            
+            await emailNotifier.notifySchedulerEvent('startup failed', {
+                error: error.message,
+                environment: config.name
+            });
+            
             throw error;
         }
     }
@@ -147,6 +178,13 @@ class BookioScheduler {
             
             console.log(`✅ Scheduled refresh completed in ${refreshEntry.duration}ms`);
             
+            // Log successful refresh
+            await logger.logScheduler('refresh_completed', {
+                duration: refreshEntry.duration,
+                totalRefreshes: this.stats.totalRefreshes,
+                successRate: `${(this.stats.successfulRefreshes / this.stats.totalRefreshes * 100).toFixed(2)}%`
+            });
+            
         } catch (error) {
             // Update statistics
             refreshEntry.error = error.message;
@@ -158,13 +196,50 @@ class BookioScheduler {
             
             console.error(`❌ Scheduled refresh failed: ${error.message}`);
             
+            // Log refresh failure
+            await logger.logError('Scheduled refresh failed', error, 'SCHEDULER');
+            
+            await logger.logScheduler('refresh_failed', {
+                duration: refreshEntry.duration,
+                error: error.message,
+                failedRefreshes: this.stats.failedRefreshes,
+                totalRefreshes: this.stats.totalRefreshes
+            });
+            
+            // Send email for refresh failures
+            await emailNotifier.notifySchedulerEvent('refresh failed', {
+                error: error.message,
+                duration: refreshEntry.duration,
+                stats: {
+                    totalRefreshes: this.stats.totalRefreshes,
+                    failedRefreshes: this.stats.failedRefreshes,
+                    successRate: `${(this.stats.successfulRefreshes / this.stats.totalRefreshes * 100).toFixed(2)}%`
+                }
+            });
+            
             // Retry logic
             if (this.shouldRetry()) {
                 console.log('🔄 Scheduling retry in 5 minutes');
+                
+                await logger.logScheduler('scheduling_retry', {
+                    retryDelay: 5 * 60 * 1000,
+                    attemptNumber: this.stats.failedRefreshes
+                });
+                
                 setTimeout(async () => {
                     await this.performScheduledRefresh();
                 }, 5 * 60 * 1000); // Retry in 5 minutes
                 return;
+            } else {
+                // Too many failures - send critical alert
+                await emailNotifier.notifySchedulerEvent('multiple failures', {
+                    error: 'Too many refresh failures - manual intervention required',
+                    stats: {
+                        totalRefreshes: this.stats.totalRefreshes,
+                        failedRefreshes: this.stats.failedRefreshes,
+                        recentFailures: this.refreshHistory.slice(-5).filter(e => !e.success).length
+                    }
+                });
             }
         }
         
