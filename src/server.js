@@ -16,8 +16,13 @@ import elevenlabsRoutes from './routes/elevenlabs.js';
 import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import bookingRoutes from './routes/booking.js';
 import authRoutes from './routes/auth.js';
+import logsRoutes from './routes/logs.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import bookioScheduler from './services/bookioScheduler.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +43,9 @@ app.use(morgan('combined'));
 app.use(limiter);
 app.use(express.json());
 
+// Serve static files for dashboard
+app.use(express.static(path.join(__dirname, 'views')));
+
 // Health check endpoint - Railway compatible
 app.get('/health', (req, res) => {
   res.status(200).json({ 
@@ -49,14 +57,21 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Dashboard route
+app.get('/logs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
+});
+
 // Root endpoint for Railway
 app.get('/', (req, res) => {
   res.status(200).json({
-    message: '🚀 Bookio Webhook API with Email Notifications',
+    message: '🚀 Bookio Webhook API with Database Logging',
     status: 'Active',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
+      dashboard: '/logs',
+      logsAPI: '/api/logs',
       booking: '/api/booking/create',
       testEmail: '/api/booking/test-email'
     }
@@ -71,6 +86,7 @@ app.use('/api/widget', widgetFlowRoutes);
 app.use('/api/elevenlabs', elevenlabsUnifiedRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/logs', logsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

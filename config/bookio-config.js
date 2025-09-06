@@ -68,13 +68,15 @@ const environments = {
                 name: 'Bratislava',
                 facility: 'refresh-laserove-a-esteticke-studio',
                 widgetPath: '/refresh-laserove-a-esteticke-studio/widget',
-                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk'
+                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio/widget?lang=sk',
+                facilityId: 'refresh-laserove-a-esteticke-studio'
             },
             pezinok: {
                 name: 'Pezinok', 
                 facility: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
                 widgetPath: '/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget',
-                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk'
+                widgetURL: 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk',
+                facilityId: 'refresh-laserove-a-esteticke-studio-zu0yxr5l'
             }
         },
         
@@ -192,16 +194,47 @@ config.getAllFacilities = () => {
     if (config.facilities) {
         return Object.keys(config.facilities).map(key => ({
             key,
+            location: key, // Add location property for dual auth service
             ...config.facilities[key]
         }));
     }
     return [{
         key: 'default',
+        location: 'default',
         name: config.name,
         facility: config.facility,
         widgetPath: config.widgetPath,
         widgetURL: `${config.baseURL}${config.widgetPath}?lang=sk`
     }];
+};
+
+// Add method to get facility by slug
+config.getFacilityBySlug = (facilitySlug) => {
+    if (config.facilities) {
+        for (const [key, facility] of Object.entries(config.facilities)) {
+            if (facility.facility === facilitySlug || facility.facilityId === facilitySlug) {
+                return {
+                    key,
+                    location: key,
+                    ...facility
+                };
+            }
+        }
+    }
+    
+    // Check default facility
+    if (config.facility === facilitySlug) {
+        return {
+            key: 'default',
+            location: 'default',
+            name: config.name,
+            facility: config.facility,
+            widgetPath: config.widgetPath,
+            widgetURL: `${config.baseURL}${config.widgetPath}?lang=sk`
+        };
+    }
+    
+    return null;
 };
 
 // Log current environment (only in development)

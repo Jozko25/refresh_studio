@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import db from '../database/connection.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,6 +14,7 @@ class Logger {
         this.logDir = path.join(__dirname, '../../logs');
         this.currentLogFile = null;
         this.logLevel = process.env.LOG_LEVEL || 'info';
+        this.dbInitialized = false;
         
         // Log levels (higher number = more verbose)
         this.levels = {
@@ -24,8 +26,23 @@ class Logger {
         
         this.currentLevel = this.levels[this.logLevel] || 2;
         
-        // Initialize log directory
+        // Initialize log directory and database
         this.initLogDirectory();
+        this.initDatabase();
+    }
+
+    /**
+     * Initialize database connection
+     */
+    async initDatabase() {
+        try {
+            await db.initialize();
+            this.dbInitialized = true;
+            console.log('✅ Logger database connection initialized');
+        } catch (error) {
+            console.error('❌ Logger database initialization failed:', error.message);
+            this.dbInitialized = false;
+        }
     }
     
     /**
@@ -56,7 +73,7 @@ class Logger {
     }
     
     /**
-     * Write log entry to file
+     * Write log entry to file AND database
      */
     async writeLog(level, category, message, data = {}) {
         if (this.levels[level] > this.currentLevel) {
@@ -75,7 +92,7 @@ class Logger {
         const logLine = JSON.stringify(logEntry) + '\n';
         
         try {
-            // Ensure log file is current (handle date rollover)
+            // Write to file (existing functionality)
             const currentDate = this.getDateString();
             const expectedFile = path.join(this.logDir, `refresh-booking-${currentDate}.log`);
             
@@ -84,6 +101,24 @@ class Logger {
             }
             
             await fs.appendFile(this.currentLogFile, logLine);
+            
+            // Write to database and return result
+            let dbResult = null;
+            if (this.dbInitialized) {
+                try {
+                    dbResult = await db.insertLog(
+                        level,
+                        category,
+                        message,
+                        data.facility || null,
+                        data,
+                        data.userEmail || null
+                    );
+                } catch (dbError) {
+                    console.error('❌ Failed to write to database:', dbError.message);
+                    // Continue - don't fail the entire log operation if DB is down
+                }
+            }
             
             // Also log to console in development
             if (process.env.NODE_ENV !== 'production') {
@@ -94,8 +129,11 @@ class Logger {
                 }
             }
             
+            return dbResult;
+            
         } catch (error) {
             console.error('Failed to write log:', error.message);
+            return null;
         }
     }
     
@@ -113,11 +151,13 @@ class Logger {
     }
     
     /**
-     * Log booking events
+     * Log booking events with detailed database entry
      */
     async logBooking(event, bookingData = {}) {
         const level = event === 'success' ? 'info' : 'error';
-        await this.writeLog(level, 'BOOKING', `Booking ${event}`, {
+        
+        // Write to main log
+        const logResult = await this.writeLog(level, 'BOOKING', `Booking ${event}`, {
             event,
             service: bookingData.serviceName,
             date: bookingData.date,
@@ -127,8 +167,33 @@ class Logger {
             email: bookingData.customerEmail,
             price: bookingData.price,
             worker: bookingData.worker?.label,
+            facility: bookingData.facility,
             ...bookingData
         });
+        
+        // Write detailed booking event to database
+        if (this.dbInitialized && logResult) {
+            try {
+                await db.insertBookingEvent(logResult.id, {
+                    eventType: event,
+                    facility: bookingData.facility,
+                    serviceId: bookingData.serviceId,
+                    serviceName: bookingData.serviceName,
+                    customerName: bookingData.customerName,
+                    customerEmail: bookingData.customerEmail,
+                    customerPhone: bookingData.customerPhone,
+                    bookingDate: bookingData.date,
+                    bookingTimeFrom: bookingData.timeFrom,
+                    bookingTimeTo: bookingData.timeTo,
+                    price: bookingData.price,
+                    workerName: bookingData.worker?.label,
+                    bookingId: bookingData.bookingId,
+                    errorMessage: bookingData.errorMessage
+                });
+            } catch (dbError) {
+                console.error('❌ Failed to write booking event to database:', dbError.message);
+            }
+        }
     }
     
     /**

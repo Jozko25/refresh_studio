@@ -84,6 +84,20 @@ class EmailNotifier {
      * Send email notification
      */
     async sendEmail(subject, htmlContent, textContent = null, emailType = 'general') {
+        // Smart email filtering - only send important alerts
+        const importantEvents = [
+            'booking_success',
+            'booking_failed',
+            'auth_failed', 
+            'system_error',
+            'booking_attempt'
+        ];
+        
+        if (!importantEvents.includes(emailType)) {
+            console.log(`📧 Email filtered (non-critical): ${subject}`);
+            return true;
+        }
+        
         if (!this.isEnabled || !this.transporter) {
             logger.logSystem('email_disabled', { subject, emailType });
             return false;
