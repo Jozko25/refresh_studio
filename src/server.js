@@ -13,6 +13,7 @@ import slotsRoutes from './routes/slots.js';
 import callFlowRoutes from './routes/callFlow.js';
 import widgetFlowRoutes from './routes/widgetFlow.js';
 import elevenlabsRoutes from './routes/elevenlabs.js';
+import logger from './services/logger.js';
 import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import bookingRoutes from './routes/booking.js';
 import authRoutes from './routes/auth.js';
@@ -44,6 +45,35 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(limiter);
 app.use(express.json());
+
+// API request logging middleware
+app.use('/api', (req, res, next) => {
+  const startTime = Date.now();
+  const originalSend = res.send;
+  
+  res.send = function(data) {
+    const duration = Date.now() - startTime;
+    const statusCode = res.statusCode;
+    const success = statusCode < 400;
+    
+    // Log API call
+    logger.logApiEvent('api_request', {
+      endpoint: req.path,
+      fullUrl: req.originalUrl,
+      method: req.method,
+      statusCode,
+      duration,
+      success,
+      userAgent: req.headers['user-agent'],
+      ip: req.ip || req.connection.remoteAddress,
+      facility: req.headers['x-facility'] || 'bratislava'
+    });
+    
+    originalSend.call(this, data);
+  };
+  
+  next();
+});
 
 // Serve static files for dashboard
 app.use(express.static(path.join(__dirname, 'views')));
