@@ -46,8 +46,22 @@ class BookioScheduler {
                 pid: process.pid
             });
             
-            // Initialize auth service first
-            await bookioAuthService.initialize();
+            // Try to initialize auth service (gracefully handle failures)
+            try {
+                await bookioAuthService.initialize();
+                console.log('✅ Auth service initialized successfully');
+            } catch (authError) {
+                console.log('⚠️ Auth service failed to initialize (browser issue), continuing without scheduler');
+                console.log('   Dashboard and API will still work');
+                
+                await logger.logScheduler('auth_init_failed', {
+                    error: authError.message,
+                    environment: config.name
+                });
+                
+                // Don't fail completely - the app can still serve the dashboard
+                return false;
+            }
             
             // Set up refresh timer
             this.setupRefreshTimer();

@@ -113,14 +113,20 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`📅 Booking API: http://0.0.0.0:${PORT}/api/booking/create`);
   console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth/status`);
   
-  // Auto-start scheduler in production
+  // Auto-start scheduler in production (gracefully handle failures)
   if (process.env.NODE_ENV === 'production' && process.env.BOOKIO_ENV) {
     try {
       console.log(`🔐 Starting auth scheduler for ${process.env.BOOKIO_ENV} environment...`);
-      await bookioScheduler.start();
-      console.log(`✅ Auth scheduler started successfully`);
+      const schedulerStarted = await bookioScheduler.start();
+      if (schedulerStarted) {
+        console.log(`✅ Auth scheduler started successfully`);
+      } else {
+        console.log(`⚠️ Auth scheduler could not start (likely browser installation issue)`);
+        console.log(`📊 Dashboard and API endpoints are still available`);
+      }
     } catch (error) {
       console.error(`⚠️ Failed to start auth scheduler: ${error.message}`);
+      console.log(`📊 Server will continue running - Dashboard available at /logs`);
       // Don't crash the server, just log the error
     }
   } else if (process.env.NODE_ENV === 'development') {

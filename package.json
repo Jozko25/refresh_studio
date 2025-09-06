@@ -5,8 +5,9 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "build": "mkdir -p logs && npx playwright install --with-deps chromium",
+    "start": "mkdir -p logs && node src/server.js",
+    "build": "echo 'Build complete'",
+    "postinstall": "npx playwright install --with-deps chromium",
     "dev": "nodemon src/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
