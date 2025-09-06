@@ -1322,21 +1322,52 @@ router.post('/', async (req, res) => {
                         const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
                         const timeTo = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
                         
-                        // Prepare booking payload
+                        // Prepare booking payload matching browser format
                         const bookingPayload = {
                             event: {
-                                type: 0, // Regular booking
+                                type: 0,
                                 service: { value: parseInt(selectedService.serviceId) },
                                 count: 0,
                                 dateFrom: bookingDate,
                                 dateTo: bookingDate,
                                 timeFrom: bookingTime,
                                 timeTo: timeTo,
+                                repeat: {
+                                    repeatReservation: false,
+                                    repeatDays: [false,false,false,false,false,false,false],
+                                    selectedInterval: { label: "Weekly", value: 1 },
+                                    selectedRepeatDateTo: null
+                                },
                                 duration: duration,
+                                timeBefore: 0,
+                                timeAfter: 0,
                                 name: customerName,
-                                email: customerEmail || 'no-email@example.com',
                                 phone: customerPhone,
-                                note: `Rezervácia vytvorená cez ElevenLabs AI asistenta pre ${requestedLocation}`
+                                selectedCountry: "sk",
+                                email: customerEmail || 'no-email@example.com',
+                                price: selectedService.price || 100,
+                                resObjects: [
+                                    {
+                                        id: "u_17785",
+                                        value: 17785,
+                                        label: "Valika",
+                                        title: "Valika",
+                                        color: "#ec407a",
+                                        capacity: 1,
+                                        businessHours: [
+                                            {"dow": [1], "start": "08:30", "end": "14:30"},
+                                            {"dow": [5], "start": "08:30", "end": "14:30"},
+                                            {"dow": [3], "start": "08:30", "end": "14:30"},
+                                            {"dow": [4], "start": "08:30", "end": "14:30"},
+                                            {"dow": [2], "start": "08:30", "end": "14:30"}
+                                        ],
+                                        out: null
+                                    }
+                                ],
+                                autoConfirmCustomer: null,
+                                width: 1728,
+                                height: 1117,
+                                allowedMarketing: false
                             },
                             facility: facilitySlug
                         };
@@ -1354,11 +1385,19 @@ router.post('/', async (req, res) => {
                                 bookingPayload,
                                 {
                                     headers: {
+                                        'Accept': 'application/json, text/plain, */*',
+                                        'Accept-Language': 'en-US,en;q=0.9,sk;q=0.8',
                                         'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
                                         'Cookie': cookieString,
+                                        'Origin': 'https://services.bookio.com',
                                         'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
-                                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                                        'Sec-Ch-Ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+                                        'Sec-Ch-Ua-Mobile': '?0',
+                                        'Sec-Ch-Ua-Platform': '"macOS"',
+                                        'Sec-Fetch-Dest': 'empty',
+                                        'Sec-Fetch-Mode': 'cors',
+                                        'Sec-Fetch-Site': 'same-origin',
+                                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
                                         'X-Requested-With': 'XMLHttpRequest'
                                     },
                                     timeout: 10000
