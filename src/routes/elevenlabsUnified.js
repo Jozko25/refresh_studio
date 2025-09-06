@@ -1276,38 +1276,34 @@ router.post('/', async (req, res) => {
                     console.log('📍 Location:', requestedLocation);
                     
                     try {
-                        console.log('🔧 Starting booking process...');
+                        console.log('🔧 Starting simplified booking process...');
                         
-                        // Get the authenticated cookie for the facility with timeout
-                        const authService = (await import('../services/DualFacilityAuthService.js')).default;
-                        console.log('✅ Auth service imported');
+                        // Use existing token files directly
+                        const fs = await import('fs/promises');
+                        const path = await import('path');
+                        const { fileURLToPath } = await import('url');
                         
-                        const cookieData = await Promise.race([
-                            authService.getCookie(requestedLocation),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('Cookie timeout')), 5000))
-                        ]);
+                        const __filename = fileURLToPath(import.meta.url);
+                        const __dirname = path.dirname(__filename);
+                        const tokenDir = path.resolve(__dirname, '../../data/tokens');
                         
-                        console.log('✅ Cookie retrieved');
+                        const tokenFileName = requestedLocation === 'bratislava' 
+                            ? 'jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio-zu0yxr5l.json'
+                            : 'jurkovicova_jana_gmail_com_Production_refresh-laserove-a-esteticke-studio.json';
                         
-                        if (!cookieData) {
-                            console.error('❌ No valid authentication cookie for', requestedLocation);
+                        const tokenPath = path.join(tokenDir, tokenFileName);
+                        console.log('📂 Reading token from:', tokenPath);
+                        
+                        const tokenData = JSON.parse(await fs.readFile(tokenPath, 'utf-8'));
+                        const cookieString = tokenData.cookie;
+                        
+                        if (!cookieString) {
+                            console.error('❌ No cookie in token file');
                             res.set('Content-Type', 'text/plain');
                             return res.send('Prepáčte, technická chyba pri autentifikácii. Skúste to znova za chvíľu.');
                         }
                         
-                        console.log('🔑 Cookie data type:', typeof cookieData);
-                        
-                        // Determine cookie string safely
-                        let cookieString;
-                        if (typeof cookieData === 'string') {
-                            cookieString = cookieData;
-                        } else if (cookieData && cookieData.value) {
-                            cookieString = `bses-0=${cookieData.value}`;
-                        } else {
-                            cookieString = String(cookieData);
-                        }
-                        
-                        console.log('🔑 Using cookie:', cookieString ? 'Present' : 'Missing');
+                        console.log('✅ Cookie loaded from token file');
                         
                         // Determine facility slug
                         const facilitySlug = requestedLocation === 'bratislava' 
