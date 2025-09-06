@@ -1276,9 +1276,18 @@ router.post('/', async (req, res) => {
                     console.log('📍 Location:', requestedLocation);
                     
                     try {
-                        // Get the authenticated cookie for the facility
+                        console.log('🔧 Starting booking process...');
+                        
+                        // Get the authenticated cookie for the facility with timeout
                         const authService = (await import('../services/DualFacilityAuthService.js')).default;
-                        const cookieData = await authService.getCookie(requestedLocation);
+                        console.log('✅ Auth service imported');
+                        
+                        const cookieData = await Promise.race([
+                            authService.getCookie(requestedLocation),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Cookie timeout')), 5000))
+                        ]);
+                        
+                        console.log('✅ Cookie retrieved');
                         
                         if (!cookieData) {
                             console.error('❌ No valid authentication cookie for', requestedLocation);
@@ -1287,7 +1296,18 @@ router.post('/', async (req, res) => {
                         }
                         
                         console.log('🔑 Cookie data type:', typeof cookieData);
-                        console.log('🔑 Cookie data:', cookieData ? JSON.stringify(cookieData).substring(0, 50) + '...' : 'null');
+                        
+                        // Determine cookie string safely
+                        let cookieString;
+                        if (typeof cookieData === 'string') {
+                            cookieString = cookieData;
+                        } else if (cookieData && cookieData.value) {
+                            cookieString = `bses-0=${cookieData.value}`;
+                        } else {
+                            cookieString = String(cookieData);
+                        }
+                        
+                        console.log('🔑 Using cookie:', cookieString ? 'Present' : 'Missing');
                         
                         // Determine facility slug
                         const facilitySlug = requestedLocation === 'bratislava' 
@@ -1321,26 +1341,31 @@ router.post('/', async (req, res) => {
                             facility: facilitySlug
                         };
                         
-                        console.log('📤 Posting booking to Bookio:', JSON.stringify(bookingPayload, null, 2));
+                        console.log('📤 Posting booking to Bookio');
+                        console.log('📤 Payload:', {
+                            ...bookingPayload,
+                            event: { ...bookingPayload.event, phone: '[REDACTED]' }
+                        });
                         
-                        // Make the actual booking API call
-                        const bookingResponse = await axios.post(
-                            'https://services.bookio.com/client-admin/api/schedule/event/save',
-                            bookingPayload,
-                            {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'Cookie': typeof cookieData === 'string' ? cookieData : 
-                                             cookieData.value ? `bses-0=${cookieData.value}` : 
-                                             JSON.stringify(cookieData),
-                                    'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
-                                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                },
-                                timeout: 15000
-                            }
-                        );
+                        // Make the actual booking API call with timeout protection
+                        const bookingResponse = await Promise.race([
+                            axios.post(
+                                'https://services.bookio.com/client-admin/api/schedule/event/save',
+                                bookingPayload,
+                                {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'Cookie': cookieString,
+                                        'Referer': `https://services.bookio.com/client-admin/${facilitySlug}/schedule`,
+                                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    timeout: 10000
+                                }
+                            ),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Booking API timeout')), 12000))
+                        ]);
                         
                         console.log('✅ Booking API response:', bookingResponse.status, bookingResponse.data);
                         
