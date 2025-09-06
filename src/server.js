@@ -57,11 +57,11 @@ app.use('/api', (req, res, next) => {
     const success = statusCode < 400;
     
     // Log API call
-    logger.logApiEvent('api_request', {
+    logger.logAPI('request', {
       endpoint: req.path,
       fullUrl: req.originalUrl,
       method: req.method,
-      statusCode,
+      status: statusCode,
       duration,
       success,
       userAgent: req.headers['user-agent'],
