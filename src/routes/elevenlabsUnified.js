@@ -1277,8 +1277,7 @@ router.post('/', async (req, res) => {
                     
                     try {
                         // Get the authenticated cookie for the facility
-                        const DualFacilityAuthService = (await import('../services/DualFacilityAuthService.js')).default;
-                        const authService = new DualFacilityAuthService();
+                        const authService = (await import('../services/DualFacilityAuthService.js')).default;
                         const cookieString = await authService.getCookie(requestedLocation);
                         
                         if (!cookieString) {
