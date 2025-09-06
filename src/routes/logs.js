@@ -356,6 +356,38 @@ router.get('/health', async (req, res) => {
 });
 
 /**
+ * GET /api/logs/debug - Debug database connection (production only)
+ */
+router.get('/debug', async (req, res) => {
+    try {
+        const debug = {
+            hasDatabase: !!process.env.DATABASE_URL,
+            nodeEnv: process.env.NODE_ENV,
+            databaseUrlPrefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'MISSING',
+            pgVariables: {
+                PGHOST: process.env.PGHOST,
+                PGPORT: process.env.PGPORT,
+                PGDATABASE: process.env.PGDATABASE,
+                PGUSER: process.env.PGUSER,
+                PGPASSWORD: process.env.PGPASSWORD ? '***set***' : 'MISSING'
+            },
+            timestamp: new Date().toISOString()
+        };
+        
+        res.json({
+            success: true,
+            debug
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Debug failed',
+            message: error.message
+        });
+    }
+});
+
+/**
  * POST /api/logs/init-schema - Initialize database schema manually
  */
 router.post('/init-schema', async (req, res) => {

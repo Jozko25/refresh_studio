@@ -24,6 +24,12 @@ class DatabaseConnection {
     async initialize() {
         try {
             console.log('🔌 Initializing database connection...');
+            console.log('Database URL exists:', !!process.env.DATABASE_URL);
+            console.log('NODE_ENV:', process.env.NODE_ENV);
+            
+            if (!process.env.DATABASE_URL) {
+                throw new Error('DATABASE_URL environment variable is not set');
+            }
             
             // Create connection pool
             this.pool = new Pool({
@@ -31,8 +37,10 @@ class DatabaseConnection {
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
                 max: 10, // Maximum connections in pool
                 idleTimeoutMillis: 30000,
-                connectionTimeoutMillis: 5000,
+                connectionTimeoutMillis: 10000, // Increased timeout
             });
+            
+            console.log('✅ Database pool created');
 
             // Test connection
             const client = await this.pool.connect();
