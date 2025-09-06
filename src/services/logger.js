@@ -51,9 +51,15 @@ class Logger {
     async initLogDirectory() {
         try {
             await fs.mkdir(this.logDir, { recursive: true });
-            this.currentLogFile = path.join(this.logDir, `refresh-booking-${this.getDateString()}.log`);
+            this.currentLogFile = path.join(this.logDir, `refresh-studio-${this.getDateString()}.log`);
+            console.log(`📁 Log directory initialized: ${this.logDir}`);
         } catch (error) {
             console.error('Failed to initialize log directory:', error.message);
+            // Create fallback in current directory if needed
+            this.logDir = path.join(process.cwd(), 'logs');
+            await fs.mkdir(this.logDir, { recursive: true });
+            this.currentLogFile = path.join(this.logDir, `refresh-studio-${this.getDateString()}.log`);
+            console.log(`📁 Fallback log directory: ${this.logDir}`);
         }
     }
     
@@ -94,7 +100,7 @@ class Logger {
         try {
             // Write to file (existing functionality)
             const currentDate = this.getDateString();
-            const expectedFile = path.join(this.logDir, `refresh-booking-${currentDate}.log`);
+            const expectedFile = path.join(this.logDir, `refresh-studio-${currentDate}.log`);
             
             if (this.currentLogFile !== expectedFile) {
                 this.currentLogFile = expectedFile;
