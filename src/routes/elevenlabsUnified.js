@@ -1336,14 +1336,27 @@ router.post('/', async (req, res) => {
                         const page = await context.newPage();
                         
                         // Set the authentication cookie
+                        console.log('🔑 Cookie type:', typeof cookieString);
+                        console.log('🔑 Cookie value:', cookieString);
+                        
+                        // Extract cookie value safely
+                        let cookieValue;
+                        if (typeof cookieString === 'string') {
+                            cookieValue = cookieString.replace('bses-0=', '');
+                        } else {
+                            cookieValue = String(cookieString).replace('bses-0=', '');
+                        }
+                        
                         await page.addCookie({
                             name: 'bses-0',
-                            value: cookieString.replace('bses-0=', ''),
+                            value: cookieValue,
                             domain: '.bookio.com',
                             path: '/',
                             httpOnly: true,
                             secure: true
                         });
+                        
+                        console.log('🍪 Cookie set successfully');
                         
                         console.log('🌐 Navigating to Bookio admin schedule...');
                         await page.goto(`https://services.bookio.com/client-admin/${facilitySlug}/schedule`);
