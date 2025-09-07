@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/minimal-server.js",
     "build": "echo 'Build complete'",
     "dev": "nodemon src/server.js",
     "test": "jest",
