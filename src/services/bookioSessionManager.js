@@ -43,92 +43,141 @@ class BookioSessionManager {
     }
 
     /**
-     * Refresh session by opening Chrome and getting the cookie
+     * Refresh session by automating browser interaction
      */
     async refreshSession() {
-        console.log('🚀 Starting automated Chrome session refresh...');
+        console.log('🚀 Starting automated session refresh...');
         
         let browser;
         try {
             // Launch Chrome in headless mode
             browser = await puppeteer.launch({
-                headless: 'new', // Use new headless mode for better compatibility
+                headless: 'new',
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
-                    '--disable-blink-features=AutomationControlled',
-                    '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                ],
-                defaultViewport: null
+                    '--disable-blink-features=AutomationControlled'
+                ]
             });
 
             const page = await browser.newPage();
             
-            // Set user agent to appear more like a real browser
+            // Set realistic user agent
             await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-            
-            // Add some browser APIs that are often checked
-            await page.evaluateOnNewDocument(() => {
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => false,
-                });
-            });
             
             // Navigate to the widget page
             const widgetUrl = 'https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk';
             console.log(`📍 Navigating to ${widgetUrl}`);
             
             await page.goto(widgetUrl, { 
-                waitUntil: 'domcontentloaded',
+                waitUntil: 'networkidle0',
                 timeout: 60000 
             });
 
-            console.log('⏳ Page loaded, triggering session creation...');
+            console.log('⏳ Page loaded, intercepting responses to capture cookies...');
             
-            // Make an API request from the page context to trigger session creation
-            const response = await page.evaluate(async () => {
+            // Intercept responses to capture Set-Cookie headers
+            let capturedCookie = null;
+            
+            page.on('response', (response) => {
+                const url = response.url();
+                if (url.includes('/allowedTimes')) {
+                    const setCookieHeaders = response.headers()['set-cookie'] || '';
+                    if (setCookieHeaders.includes('bses-0=')) {
+                        const match = setCookieHeaders.match(/bses-0=([^;]+)/);
+                        if (match) {
+                            capturedCookie = match[1];
+                            console.log('🎯 Captured session cookie from response!');
+                        }
+                    }
+                }
+            });
+            
+            // Make the key API call that generates/refreshes the session cookie
+            const cookieResponse = await page.evaluate(async () => {
                 try {
-                    const res = await fetch('/widget/api/services?lang=sk', {
+                    // First get services to establish session context
+                    const servicesRes = await fetch('/widget/api/services?lang=sk', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             facility: 'refresh-laserove-a-esteticke-studio-zu0yxr5l',
                             categoryId: null,
                             lang: 'sk'
                         })
                     });
-                    return { success: true, status: res.status };
+                    
+                    if (!servicesRes.ok) {
+                        throw new Error(`Services API failed: ${servicesRes.status}`);
+                    }
+                    
+                    // Wait a bit
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Make allowedTimes call to trigger session cookie refresh
+                    const timesRes = await fetch('/widget/api/allowedTimes?lang=sk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            serviceId: 127325,
+                            workerId: -1,
+                            date: '22.09.2025 00:00',
+                            lang: 'sk',
+                            count: 1,
+                            participantsCount: 0,
+                            addons: []
+                        })
+                    });
+                    
+                    return { 
+                        success: true, 
+                        servicesStatus: servicesRes.status,
+                        timesStatus: timesRes.status 
+                    };
                 } catch (error) {
                     return { success: false, error: error.message };
                 }
             });
             
-            console.log('🔄 API request result:', response);
+            console.log('🔄 API calls result:', cookieResponse);
             
-            // Wait for cookies to be set
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Wait for response interception
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
-            // Get all cookies after API request
-            const cookies = await page.cookies();
-            console.log(`🍪 Found ${cookies.length} cookies after API request`);
-            console.log('🍪 Cookie names:', cookies.map(c => c.name).join(', '));
-            
-            // Find the session cookie (might be bses-0 or bses-[number])
-            const sessionCookie = cookies.find(c => c.name.startsWith('bses-'));
-            
-            if (!sessionCookie) {
-                console.log('⚠️ Session cookie still not found, checking all cookies...');
-                cookies.forEach(cookie => {
-                    console.log(`  - ${cookie.name}: ${cookie.value.substring(0, 30)}...`);
-                });
-                throw new Error('Session cookie not found after API request');
+            // Use captured cookie if we got one
+            if (capturedCookie) {
+                console.log('✅ Using captured cookie from response headers');
+                this.sessionCookie = capturedCookie;
+            } else {
+                console.log('⚠️ No cookie captured from response, checking page cookies...');
+                
+                // Get all cookies after API calls
+                const cookies = await page.cookies();
+                console.log(`🍪 Found ${cookies.length} cookies after API calls`);
+                
+                // Find the session cookie
+                const sessionCookie = cookies.find(c => c.name === 'bses-0');
+                
+                if (!sessionCookie) {
+                    console.log('⚠️ Session cookie not found, available cookies:');
+                    cookies.forEach(cookie => {
+                        console.log(`  - ${cookie.name}: ${cookie.value.substring(0, 30)}...`);
+                    });
+                    
+                    // Try to find any bses-* cookie
+                    const anyBsesCookie = cookies.find(c => c.name.startsWith('bses-'));
+                    if (anyBsesCookie) {
+                        console.log(`🔍 Using ${anyBsesCookie.name} instead`);
+                        this.sessionCookie = anyBsesCookie.value;
+                    } else {
+                        throw new Error('No session cookie found');
+                    }
+                } else {
+                    this.sessionCookie = sessionCookie.value;
+                }
             }
-            
-            this.sessionCookie = sessionCookie.value;
 
             console.log('✅ Got session cookie:', this.sessionCookie.substring(0, 50) + '...');
 
@@ -144,6 +193,11 @@ class BookioSessionManager {
 
         } catch (error) {
             console.error('❌ Failed to refresh session:', error.message);
+            console.log('💡 To get a valid session:');
+            console.log('   1. Open https://services.bookio.com/refresh-laserove-a-esteticke-studio-zu0yxr5l/widget?lang=sk');
+            console.log('   2. Open DevTools → Application → Cookies');
+            console.log('   3. Copy the bses-0 cookie value');
+            console.log('   4. POST to /api/session/set with the cookie');
             throw error;
         } finally {
             if (browser) {

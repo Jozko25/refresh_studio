@@ -356,8 +356,10 @@ class LocationBookioService {
                 let sessionCookie;
                 try {
                     sessionCookie = await bookioSessionManager.getSessionCookie();
+                    console.log('🍪 Using session cookie for authenticated request');
                 } catch (error) {
                     console.error('⚠️ Failed to get session cookie:', error.message);
+                    console.log('💡 API will return limited results without authentication');
                     // Continue without cookie (will likely return no results)
                 }
                 
