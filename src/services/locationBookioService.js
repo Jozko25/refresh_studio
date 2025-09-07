@@ -2,6 +2,7 @@ import axios from 'axios';
 import BookioDirectService from './bookioDirectService.js';
 import serviceCache from './serviceCache.js';
 import LLMServiceMatcher from './llmServiceMatcher.js';
+import bookioSessionManager from './bookioSessionManager.js';
 
 /**
  * Location-aware Bookio Service
@@ -351,6 +352,23 @@ class LocationBookioService {
                 
                 const formattedDateTime = `${this.formatDate(checkDate)} 00:00`;
                 
+                // Get session cookie for authenticated request
+                let sessionCookie;
+                try {
+                    sessionCookie = await bookioSessionManager.getSessionCookie();
+                } catch (error) {
+                    console.error('⚠️ Failed to get session cookie:', error.message);
+                    // Continue without cookie (will likely return no results)
+                }
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (sessionCookie) {
+                    headers['Cookie'] = `bses-0=${sessionCookie}`;
+                }
+                
                 const response = await axios.post(`${this.baseUrl}/widget/api/allowedTimes?lang=sk`, {
                     serviceId: parseInt(serviceId),
                     workerId: parseInt(workerId),
@@ -361,9 +379,7 @@ class LocationBookioService {
                     addons: []
                 }, {
                     timeout: 15000,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers
                 });
 
                 const times = response.data?.data?.times?.all || [];
