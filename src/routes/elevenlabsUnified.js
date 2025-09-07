@@ -683,8 +683,8 @@ router.post('/', async (req, res) => {
                                             const workerName = workerId === 18204 ? 'Janka' : workerId === 30224 ? 'Veronika' : `Worker ${workerId}`;
                                             console.log(`🔍 Checking ${hydraService.name} with ${workerName} (${workerId})`);
                                             
-                                            // Check next 60 days
-                                            for (let dayOffset = 0; dayOffset < 60; dayOffset++) {
+                                            // Check next 21 days (reduced to avoid Railway timeout)
+                                            for (let dayOffset = 0; dayOffset < 21; dayOffset++) {
                                                 const checkDate = new Date();
                                                 checkDate.setDate(checkDate.getDate() + dayOffset);
                                                 const dateStr = `${checkDate.getDate().toString().padStart(2, '0')}.${(checkDate.getMonth() + 1).toString().padStart(2, '0')}.${checkDate.getFullYear()} 00:00`;
@@ -699,7 +699,7 @@ router.post('/', async (req, res) => {
                                                         participantsCount: 0,
                                                         addons: []
                                                     }, {
-                                                        timeout: 10000,
+                                                        timeout: 5000,  // Reduced timeout
                                                         headers: { 'Content-Type': 'application/json' }
                                                     });
                                                     
@@ -1617,7 +1617,8 @@ router.post('/', async (req, res) => {
                                     response += `\n\nChcete si rezervovať tento termín?`;
                                 }
                                 
-                                return res.json({ message: response });
+                                res.set('Content-Type', 'text/plain');
+                                return res.send(response);
                             }
                             
                             // Show real availability with skip awareness
