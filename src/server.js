@@ -17,7 +17,6 @@ import elevenlabsUnifiedRoutes from './routes/elevenlabsUnified.js';
 import bookingRoutes from './routes/booking.js';
 import authRoutes from './routes/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import bookioScheduler from './services/bookioScheduler.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,32 +83,21 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`🚀 Bookio Webhook API server running on port ${PORT} - v${Date.now()}`);
+// Start server - simplified for Railway deployment
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`🔗 Original Facility: ${process.env.BOOKIO_FACILITY_ID || 'ai-recepcia-zll65ixf'}`);
-  console.log(`🏥 REFRESH Clinic: refresh-laserove-a-esteticke-studio-zu0yxr5l`);
-  console.log(`✨ REFRESH API: http://0.0.0.0:${PORT}/api/refresh-clinic/services`);
-  console.log(`🎯 Slots API: http://0.0.0.0:${PORT}/api/slots/soonest/[serviceId]`);
-  console.log(`📞 Call Flow: http://0.0.0.0:${PORT}/api/call/services-overview`);
-  console.log(`🎨 Widget Flow: http://0.0.0.0:${PORT}/api/widget/quick-lookup/[search]`);
-  console.log(`🤖 ElevenLabs: http://0.0.0.0:${PORT}/api/elevenlabs/[tool_name]`);
-  console.log(`📅 Booking API: http://0.0.0.0:${PORT}/api/booking/create`);
-  console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth/status`);
-  
-  // Auto-start scheduler in production - disabled for now to fix deployment
-  if (false && process.env.NODE_ENV === 'production' && process.env.BOOKIO_ENV) {
-    try {
-      console.log(`🔐 Starting auth scheduler for ${process.env.BOOKIO_ENV} environment...`);
-      await bookioScheduler.start();
-      console.log(`✅ Auth scheduler started successfully`);
-    } catch (error) {
-      console.error(`⚠️ Failed to start auth scheduler: ${error.message}`);
-      // Don't crash the server, just log the error
-    }
-  } else {
-    console.log(`⚠️ Auth scheduler disabled - Use /api/auth/init to initialize manually if needed`);
-  }
+  console.log(`🤖 ElevenLabs API: http://0.0.0.0:${PORT}/api/elevenlabs`);
+  console.log(`✅ Server started successfully`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
 
 export default app;

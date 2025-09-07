@@ -1,6 +1,6 @@
 # Nixpacks configuration for Railway deployment
 [phases.setup]
-nixPkgs = ["nodejs-22"]
+nixPkgs = ["nodejs-20"]
 
 [phases.install]
 cmds = ["npm ci --omit=dev"]
@@ -9,4 +9,4 @@ cmds = ["npm ci --omit=dev"]
 cmds = ["echo 'Build complete'"]
 
 [start]
-cmd = "npm start"
+cmd = "node src/server.js"
